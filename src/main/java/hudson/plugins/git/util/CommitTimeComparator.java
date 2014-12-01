@@ -28,6 +28,7 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevWalk;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Comparator;
 
 /**
@@ -35,7 +36,7 @@ import java.util.Comparator;
  * 
  * @author Kohsuke Kawaguchi
  */
-public class CommitTimeComparator implements Comparator<Revision> {
+public class CommitTimeComparator implements Comparator<Revision>, Serializable {
     private final RevWalk walk;
 
     public CommitTimeComparator(Repository r) {
