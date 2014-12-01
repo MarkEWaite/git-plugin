@@ -13,6 +13,7 @@ import hudson.model.Descriptor;
  * @author <a href="mailto:dirk.reske@t-systems.com">Dirk Reske (dirk.reske@t-systems.com)</a>
  */
 public class ChangelogToBranchOptions extends AbstractDescribableImpl<ChangelogToBranchOptions> implements Serializable {
+    private static final long serialVersionUID = 1L;
     private String compareRemote;
     private String compareTarget;
 

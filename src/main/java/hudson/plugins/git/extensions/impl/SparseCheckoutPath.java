@@ -49,6 +49,7 @@ public class SparseCheckoutPath extends AbstractDescribableImpl<SparseCheckoutPa
     }
 
     private static class SparseCheckoutPathToPath implements Function<SparseCheckoutPath, String>, Serializable {
+        private static final long serialVersionUID = 1L;
         public String apply(@NonNull SparseCheckoutPath sparseCheckoutPath) {
             return sparseCheckoutPath.getPath();
         }

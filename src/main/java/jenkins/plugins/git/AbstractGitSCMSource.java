@@ -349,6 +349,7 @@ public abstract class AbstractGitSCMSource extends SCMSource {
          * The subversion revision.
          */
         private String hash;
+        private static final long serialVersionUID = 1L;
 
         public SCMRevisionImpl(SCMHead head, String hash) {
             super(head);
@@ -383,6 +384,7 @@ public abstract class AbstractGitSCMSource extends SCMSource {
     public static class SpecificRevisionBuildChooser extends BuildChooser {
 
         private final Revision revision;
+        private static final long serialVersionUID = 1L;
 
         public SpecificRevisionBuildChooser(SCMRevisionImpl revision) {
             ObjectId sha1 = ObjectId.fromString(revision.getHash());

@@ -16,6 +16,7 @@ import java.io.Serializable;
  *
  */
 public class UserMergeOptions extends AbstractDescribableImpl<UserMergeOptions>  implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     private String mergeRemote;
     private String mergeTarget;

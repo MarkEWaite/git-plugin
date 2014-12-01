@@ -37,6 +37,7 @@ import java.util.Comparator;
  * @author Kohsuke Kawaguchi
  */
 public class CommitTimeComparator implements Comparator<Revision>, Serializable {
+    private static final long serialVersionUID = 1L;
     private transient final RevWalk walk;
 
     public CommitTimeComparator(Repository r) {

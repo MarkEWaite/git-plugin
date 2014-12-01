@@ -505,6 +505,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
     }
 
     public static final class BranchToPush extends PushConfig {
+        private static final long serialVersionUID = 1L;
         private String branchName;
 
         public String getBranchName() {
@@ -527,6 +528,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
     }
 
     public static final class TagToPush extends PushConfig {
+        private static final long serialVersionUID = 1L;
         private String tagName;
         private String tagMessage;
         private boolean createTag;
@@ -568,7 +570,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
     
 
     public static final class NoteToPush extends PushConfig {
-
+        private static final long serialVersionUID = 1L;
         private String noteMsg;
         private String noteNamespace;
         private boolean noteReplace;

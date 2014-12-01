@@ -28,6 +28,8 @@ import java.util.regex.Pattern;
  */
 public class TFS2013GitRepositoryBrowser extends GitRepositoryBrowser {
 
+    private static final long serialVersionUID = 1L;
+
     @DataBoundConstructor
     public TFS2013GitRepositoryBrowser(String repoUrl) {
         super(repoUrl);
