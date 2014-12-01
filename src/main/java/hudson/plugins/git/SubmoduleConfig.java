@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 public class SubmoduleConfig implements java.io.Serializable {
     private static final long serialVersionUID = 1L;
     String   submoduleName;
-    String[] branches;
+    String[] branches = { };
 
     public String getSubmoduleName() {
         return submoduleName;
