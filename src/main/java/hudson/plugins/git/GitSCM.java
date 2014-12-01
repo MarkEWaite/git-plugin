@@ -851,8 +851,8 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
     /*package*/ static class BuildChooserContextImpl implements BuildChooserContext, Serializable {
         final transient Job project;
-        final transient Run build;
-        final transient EnvVars environment;
+        final Run build;
+        final EnvVars environment;
 
         BuildChooserContextImpl(Job project, Run build, EnvVars environment) {
             this.project = project;
