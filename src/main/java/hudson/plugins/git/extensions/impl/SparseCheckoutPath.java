@@ -1,6 +1,7 @@
 package hudson.plugins.git.extensions.impl;
 
 import com.google.common.base.Function;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
@@ -48,7 +49,7 @@ public class SparseCheckoutPath extends AbstractDescribableImpl<SparseCheckoutPa
     }
 
     private static class SparseCheckoutPathToPath implements Function<SparseCheckoutPath, String>, Serializable {
-        public String apply(SparseCheckoutPath sparseCheckoutPath) {
+        public String apply(@NonNull SparseCheckoutPath sparseCheckoutPath) {
             return sparseCheckoutPath.getPath();
         }
     }

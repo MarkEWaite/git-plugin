@@ -27,6 +27,7 @@ import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 public class AncestryBuildChooser extends DefaultBuildChooser {
 
@@ -112,7 +113,7 @@ public class AncestryBuildChooser extends DefaultBuildChooser {
             }
         }
         
-        public boolean apply(RevCommit rev) {
+        public boolean apply(@NonNull RevCommit rev) {
             return new DateTime(rev.getCommitterIdent().getWhen()).isAfter(this.oldestAllowableCommitDate);
         }
         
