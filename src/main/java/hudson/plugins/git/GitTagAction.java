@@ -159,15 +159,10 @@ public class GitTagAction extends AbstractScmTagAction implements Describable<Gi
      */
     public final class TagWorkerThread extends TaskThread {
         private final Map<String, String> tagSet;
-        /**
-         * If the user provided a separate credential, this object represents that.
-         */
-        private final String comment;
 
         public TagWorkerThread(Map<String, String> tagSet,String comment) {
             super(GitTagAction.this, ListenerAndText.forMemory());
             this.tagSet = tagSet;
-            this.comment = comment;
         }
 
         @Override
