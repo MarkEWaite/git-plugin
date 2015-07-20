@@ -5,10 +5,10 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
-import hudson.model.Hudson;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.Serializable;
+import jenkins.model.Jenkins;
 
 public class SparseCheckoutPath extends AbstractDescribableImpl<SparseCheckoutPath> implements Serializable {
 
@@ -51,13 +51,16 @@ public class SparseCheckoutPath extends AbstractDescribableImpl<SparseCheckoutPa
     private static class SparseCheckoutPathToPath implements Function<SparseCheckoutPath, String>, Serializable {
         private static final long serialVersionUID = 1L;
         public String apply(@NonNull SparseCheckoutPath sparseCheckoutPath) {
-            return sparseCheckoutPath.getPath();
+            return sparseCheckoutPath != null ? sparseCheckoutPath.getPath() : null;
         }
     }
 
-    public Descriptor<SparseCheckoutPath> getDescriptor()
-    {
-        return Hudson.getInstance().getDescriptor(getClass());
+    public Descriptor<SparseCheckoutPath> getDescriptor() {
+        final Jenkins jenkins = Jenkins.getInstance();
+        if (jenkins == null) {
+            throw new IllegalStateException("Jenkins instance is not ready");
+        }
+        return jenkins.getDescriptor(getClass());
     }
 
     @Extension
