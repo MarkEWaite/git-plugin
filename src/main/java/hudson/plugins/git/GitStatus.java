@@ -136,9 +136,10 @@ public class GitStatus extends AbstractModelObject implements UnprotectedRootAct
         }
 
         final List<ResponseContributor> contributors = new ArrayList<ResponseContributor>();
-        Jenkins jenkins = Jenkins.getInstance();
+        final Jenkins jenkins = Jenkins.getInstance();
         if (jenkins == null) {
-            return HttpResponses.error(SC_BAD_REQUEST, new Exception("Jenkins.getInstance() null for : " + url));
+            LOGGER.warning("Jenkins instance is not ready. Cannot process notifications");
+            return HttpResponses.error(404, "Jenkins instance is not ready");
         }
         for (Listener listener : jenkins.getExtensionList(Listener.class)) {
             contributors.addAll(listener.onNotifyCommit(uri, sha1, buildParameters, branchesArray));
@@ -274,6 +275,11 @@ public class GitStatus extends AbstractModelObject implements UnprotectedRootAct
             lastStaticBuildParameters = null;
             List<ParameterValue> allBuildParameters = new ArrayList<ParameterValue>(buildParameters);
             List<ResponseContributor> result = new ArrayList<ResponseContributor>();
+            final Jenkins jenkins = Jenkins.getInstance();
+            if (jenkins == null) {
+                LOGGER.warning("Jenkins instance is not ready. Cannot process notifications");
+                return result;
+            }
             // run in high privilege to see all the projects anonymous users don't see.
             // this is safe because when we actually schedule a build, it's a build that can
             // happen at some random time anyway.
@@ -282,12 +288,7 @@ public class GitStatus extends AbstractModelObject implements UnprotectedRootAct
 
                 boolean scmFound = false,
                         urlFound = false;
-                Jenkins jenkins = Jenkins.getInstance();
-                if (jenkins == null) {
-                    LOGGER.severe("Jenkins.getInstance() is null in GitStatus.onNotifyCommit");
-                    return result;
-                }
-                for (final Item project : Jenkins.getInstance().getAllItems()) {
+                for (final Item project : jenkins.getAllItems()) {
                     SCMTriggerItem scmTriggerItem = SCMTriggerItem.SCMTriggerItems.asSCMTriggerItem(project);
                     if (scmTriggerItem == null) {
                         continue;
