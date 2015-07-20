@@ -404,10 +404,11 @@ public class GitSCM extends GitSCMBackwardCompatibility {
      * @return remote repository with expanded parameters
      */
     public RemoteConfig getParamExpandedRepo(EnvVars env, RemoteConfig remoteRepository){
-    	return newRemoteConfig(
+        List<RefSpec> refSpecs = getRefSpecs(remoteRepository, env);
+        return newRemoteConfig(
                 getParameterString(remoteRepository.getName(), env),
                 getParameterString(remoteRepository.getURIs().get(0).toPrivateString(), env),
-                getRefSpecs(remoteRepository, env).toArray(new RefSpec[0]));
+                refSpecs.toArray(new RefSpec[refSpecs.size()]));
     }
 
     public RemoteConfig getRepositoryByName(String repoName) {
@@ -674,18 +675,6 @@ public class GitSCM extends GitSCMBackwardCompatibility {
             listener.getLogger().println("No Git repository yet, an initial checkout is required");
             return PollingResult.SIGNIFICANT;
         }
-    }
-
-    private Build lastBuildOfBranch(String key, BuildData buildData, RemoteConfig remoteConfig) {
-        // normalize
-        if (!key.startsWith("refs/heads/")) key = "refs/heads/"+key;
-        String ref = "refs/remotes/"+remoteConfig.getName()+"/"+key.substring("refs/heads/".length());
-        return buildData.getLastBuildOfBranch(ref);
-    }
-
-    private Build lastBuildOfTag(String key, BuildData buildData, RemoteConfig remoteConfig) {
-        if (!key.startsWith("refs/tags/")) key = "refs/tags/" + key;
-        return buildData.getLastBuildOfBranch(key);
     }
 
     /**
