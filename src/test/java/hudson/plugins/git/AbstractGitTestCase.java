@@ -7,7 +7,6 @@ import hudson.Launcher;
 import hudson.matrix.MatrixBuild;
 import hudson.matrix.MatrixProject;
 import hudson.model.FreeStyleBuild;
-import hudson.model.Hudson;
 import hudson.model.Result;
 import hudson.model.TaskListener;
 import hudson.model.AbstractBuild;

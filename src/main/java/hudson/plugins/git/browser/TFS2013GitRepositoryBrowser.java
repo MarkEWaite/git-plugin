@@ -3,7 +3,6 @@ package hudson.plugins.git.browser;
 import hudson.Extension;
 import hudson.model.AbstractProject;
 import hudson.model.Descriptor;
-import hudson.model.Hudson;
 import hudson.plugins.git.GitChangeSet;
 import hudson.plugins.git.GitSCM;
 import hudson.scm.RepositoryBrowser;
@@ -122,7 +121,7 @@ public class TFS2013GitRepositoryBrowser extends GitRepositoryBrowser {
 
             // Connect to URL and check content only if we have admin permission
             Jenkins jenkins = Jenkins.getInstance();
-            if (jenkins != null && jenkins.hasPermission(Hudson.ADMINISTER))
+            if (jenkins != null && jenkins.hasPermission(Jenkins.ADMINISTER))
                 return FormValidation.ok();
 
             final String finalValue = value;

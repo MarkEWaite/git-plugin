@@ -2,7 +2,6 @@ package hudson.plugins.git.browser;
 
 import hudson.Extension;
 import hudson.model.Descriptor;
-import hudson.model.Hudson;
 import hudson.plugins.git.GitChangeSet;
 import hudson.plugins.git.GitChangeSet.Path;
 import hudson.scm.EditType;
@@ -13,6 +12,8 @@ import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
+
+import jenkins.model.Jenkins;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
@@ -90,7 +91,7 @@ public class FisheyeGitRepositoryBrowser extends GitRepositoryBrowser {
 				return FormValidation.errorWithMarkup("The URL should end like <tt>.../browse/foobar/</tt>");
 
 			// Connect to URL and check content only if we have admin permission
-			if (!Hudson.getInstance().hasPermission(Hudson.ADMINISTER))
+			if (!Jenkins.getInstance().hasPermission(Jenkins.ADMINISTER))
 				return FormValidation.ok();
 
 			final String finalValue = value;

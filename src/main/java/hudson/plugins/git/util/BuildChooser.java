@@ -4,7 +4,6 @@ import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.DescriptorExtensionList;
 import hudson.ExtensionPoint;
 import hudson.model.Describable;
-import hudson.model.Hudson;
 import hudson.model.Item;
 import hudson.model.TaskListener;
 import hudson.plugins.git.GitException;
@@ -12,6 +11,8 @@ import hudson.plugins.git.GitSCM;
 import hudson.plugins.git.IGitAPI;
 import hudson.plugins.git.Revision;
 import org.jenkinsci.plugins.gitclient.GitClient;
+
+import jenkins.model.Jenkins;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.io.IOException;
@@ -44,7 +45,7 @@ public abstract class BuildChooser implements ExtensionPoint, Describable<BuildC
     public final String getDisplayName() {
         return getDescriptor().getDisplayName();
     }
-    
+
     /**
      * Get a list of revisions that are candidates to be built.
      *
@@ -139,14 +140,14 @@ public abstract class BuildChooser implements ExtensionPoint, Describable<BuildC
     }
 
     public BuildChooserDescriptor getDescriptor() {
-        return (BuildChooserDescriptor)Hudson.getInstance().getDescriptorOrDie(getClass());
+        return (BuildChooserDescriptor)Jenkins.getInstance().getDescriptorOrDie(getClass());
     }
 
     /**
      * All the registered build choosers.
      */
     public static DescriptorExtensionList<BuildChooser,BuildChooserDescriptor> all() {
-        return Hudson.getInstance()
+        return Jenkins.getInstance()
                .<BuildChooser,BuildChooserDescriptor>getDescriptorList(BuildChooser.class);
     }
 
