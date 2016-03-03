@@ -1373,20 +1373,6 @@ public class GitSCM extends GitSCMBackwardCompatibility {
             return gitExe;
         }
 
-        /**
-         * Determine the browser from the scmData contained in the {@link StaplerRequest}.
-         *
-         * @param scmData
-         * @return browser based on request scmData
-         */
-        private GitRepositoryBrowser getBrowserFromRequest(final StaplerRequest req, final JSONObject scmData) {
-            if (scmData.containsKey("browser")) {
-                return req.bindJSON(GitRepositoryBrowser.class, scmData.getJSONObject("browser"));
-            } else {
-                return null;
-            }
-        }
-
         public static List<RemoteConfig> createRepositoryConfigurations(String[] urls,
                 String[] repoNames,
                 String[] refs) throws IOException {
