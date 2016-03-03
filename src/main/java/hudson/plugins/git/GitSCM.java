@@ -790,7 +790,12 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
     public GitTool resolveGitTool(TaskListener listener) {
         if (gitTool == null) return GitTool.getDefaultInstallation();
-        GitTool git =  Jenkins.getInstance().getDescriptorByType(GitTool.DescriptorImpl.class).getInstallation(gitTool);
+        Jenkins jenkins = Jenkins.getInstance();
+        if (jenkins == null) {
+            listener.getLogger().println("Jenkins instance is null in GitSCM.resolveGitTool");
+            return GitTool.getDefaultInstallation();
+        }
+        GitTool git =  jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).getInstallation(gitTool);
         if (git == null) {
             listener.getLogger().println("selected Git installation does not exists. Using Default");
             git = GitTool.getDefaultInstallation();
@@ -1295,7 +1300,12 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         }
 
         public boolean showGitToolOptions() {
-            return Jenkins.getInstance().getDescriptorByType(GitTool.DescriptorImpl.class).getInstallations().length>1;
+            Jenkins jenkins = Jenkins.getInstance();
+            if (jenkins == null) {
+                LOGGER.severe("Jenkins.getInstance is null in GitSCM.showGitToolOptions");
+                return false;
+            }
+            return jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).getInstallations().length>1;
         }
 
         /**
@@ -1660,7 +1670,11 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
     @Initializer(after=PLUGINS_STARTED)
     public static void onLoaded() {
-        DescriptorImpl desc = Jenkins.getInstance().getDescriptorByType(DescriptorImpl.class);
+        Jenkins jenkins = Jenkins.getInstance();
+        if (jenkins == null) {
+            LOGGER.severe("Jenkins.getInstance is null in GitSCM.onLoaded");
+        }
+        DescriptorImpl desc = jenkins.getDescriptorByType(DescriptorImpl.class);
 
         if (desc.getOldGitExe() != null) {
             String exe = desc.getOldGitExe();
