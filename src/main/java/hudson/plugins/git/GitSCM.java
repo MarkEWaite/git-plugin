@@ -243,7 +243,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
             List<RefSpec> rs = new ArrayList<RefSpec>();
             rs.add(new RefSpec("+refs/heads/*:refs/remotes/origin/*"));
-            remoteRepositories.add(newRemoteConfig("origin", source, rs.toArray(new RefSpec[0])));
+            remoteRepositories.add(newRemoteConfig("origin", source, rs.toArray(new RefSpec[rs.size()])));
             if (branch != null) {
                 branches.add(new BranchSpec(branch));
             } else {
