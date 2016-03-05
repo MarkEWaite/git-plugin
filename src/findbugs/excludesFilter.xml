@@ -141,4 +141,10 @@
     <Class name="hudson.plugins.git.GitSCMBackwardCompatibility"/>
   </Match>
 
+  <!-- Repository callback is expected to be serializable inner class. -->
+  <Match>
+    <Bug pattern="SE_INNER_CLASS"/>
+    <Class name="hudson.plugins.git.util.AncestryBuildChooser$RepositoryCallbackImpl"/>
+  </Match>
+
 </FindBugsFilter>
