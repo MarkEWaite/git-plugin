@@ -95,12 +95,7 @@ public class InverseBuildChooser extends BuildChooser {
 
         // Sort revisions by the date of commit, old to new, to ensure fairness in scheduling
         final List<Revision> in = branchRevs;
-        return utils.git.withRepository(new RepositoryCallback<List<Revision>>() {
-            public List<Revision> invoke(Repository repo, VirtualChannel channel) throws IOException, InterruptedException {
-                Collections.sort(in,new CommitTimeComparator(repo));
-                return in;
-            }
-        });
+        return utils.git.withRepository(new RepositoryCallbackImpl(in));
     }
 
     @Extension
@@ -111,6 +106,20 @@ public class InverseBuildChooser extends BuildChooser {
         }
     }
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
+    private static class RepositoryCallbackImpl implements RepositoryCallback<List<Revision>> {
+
+        private final List<Revision> in;
+        private static final long serialVersionUID = 1L;
+
+        public RepositoryCallbackImpl(List<Revision> in) {
+            this.in = in;
+        }
+
+        public List<Revision> invoke(Repository repo, VirtualChannel channel) throws IOException, InterruptedException {
+            Collections.sort(in,new CommitTimeComparator(repo));
+            return in;
+        }
+    }
 }

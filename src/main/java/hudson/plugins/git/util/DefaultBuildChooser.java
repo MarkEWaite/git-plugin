@@ -121,7 +121,7 @@ public class DefaultBuildChooser extends BuildChooser {
                 verbose(listener, "{0} seems to be a non-branch reference (tag?)");
             }
         }
-        
+
         return revisions;
     }
 
@@ -220,7 +220,7 @@ public class DefaultBuildChooser extends BuildChooser {
                     j.remove();
                 }
             }
-            
+
             // filter out HEAD ref if it's not the only ref
             if (r.getBranches().size() > 1) {
                 for (Iterator<Branch> j = r.getBranches().iterator(); j.hasNext();) {
@@ -252,7 +252,7 @@ public class DefaultBuildChooser extends BuildChooser {
 
             if (data.hasBeenBuilt(r.getSha1())) {
                 i.remove();
-                
+
                 // keep track of new branches pointing to the last built revision
                 if (lastBuiltRevision != null && lastBuiltRevision.getSha1().equals(r.getSha1())) {
                 	lastBuiltRevision = r;
@@ -274,12 +274,7 @@ public class DefaultBuildChooser extends BuildChooser {
         // 5. sort them by the date of commit, old to new
         // this ensures the fairness in scheduling.
         final List<Revision> in = revs;
-        return utils.git.withRepository(new RepositoryCallback<List<Revision>>() {
-            public List<Revision> invoke(Repository repo, VirtualChannel channel) throws IOException, InterruptedException {
-                Collections.sort(in,new CommitTimeComparator(repo));
-                return in;
-            }
-        });
+        return utils.git.withRepository(new RepositoryCallbackImpl(in));
     }
 
     /**
@@ -314,5 +309,20 @@ public class DefaultBuildChooser extends BuildChooser {
     boolean isAdvancedSpec(String branchSpec) {
         // null or wildcards or regexp
         return (branchSpec == null || branchSpec.contains("*") || branchSpec.startsWith(":"));
+    }
+
+    private static class RepositoryCallbackImpl implements RepositoryCallback<List<Revision>> {
+
+        private static final long serialVersionUID = 1L;
+        private final List<Revision> in;
+
+        public RepositoryCallbackImpl(List<Revision> in) {
+            this.in = in;
+        }
+
+        public List<Revision> invoke(Repository repo, VirtualChannel channel) throws IOException, InterruptedException {
+            Collections.sort(in, new CommitTimeComparator(repo));
+            return in;
+        }
     }
 }

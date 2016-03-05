@@ -145,20 +145,7 @@ public class GitStatus extends AbstractModelObject implements UnprotectedRootAct
             contributors.addAll(listener.onNotifyCommit(uri, sha1, buildParameters, branchesArray));
         }
 
-        return new HttpResponse() {
-            public void generateResponse(StaplerRequest req, StaplerResponse rsp, Object node)
-                    throws IOException, ServletException {
-                rsp.setStatus(SC_OK);
-                rsp.setContentType("text/plain");
-                for (ResponseContributor c : contributors) {
-                    c.addHeaders(req, rsp);
-                }
-                PrintWriter w = rsp.getWriter();
-                for (ResponseContributor c : contributors) {
-                    c.writeBody(req, rsp, w);
-                }
-            }
-        };
+        return new HttpResponseImpl(contributors);
     }
 
     /**
@@ -549,5 +536,27 @@ public class GitStatus extends AbstractModelObject implements UnprotectedRootAct
     }
 
     private static final Logger LOGGER = Logger.getLogger(GitStatus.class.getName());
+
+    private static class HttpResponseImpl implements HttpResponse {
+
+        private final List<ResponseContributor> contributors;
+
+        public HttpResponseImpl(List<ResponseContributor> contributors) {
+            this.contributors = contributors;
+        }
+
+        public void generateResponse(StaplerRequest req, StaplerResponse rsp, Object node)
+                throws IOException, ServletException {
+            rsp.setStatus(SC_OK);
+            rsp.setContentType("text/plain");
+            for (ResponseContributor c : contributors) {
+                c.addHeaders(req, rsp);
+            }
+            PrintWriter w = rsp.getWriter();
+            for (ResponseContributor c : contributors) {
+                c.writeBody(req, rsp, w);
+            }
+        }
+    }
 }
 
