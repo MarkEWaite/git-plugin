@@ -135,4 +135,10 @@
     <Field name="lastStaticBuildParameters"/>
   </Match>
 
+  <!-- API contract disallows returning zero length arrays here. -->
+  <Match>
+    <Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS"/>
+    <Class name="hudson.plugins.git.GitSCMBackwardCompatibility"/>
+  </Match>
+
 </FindBugsFilter>
