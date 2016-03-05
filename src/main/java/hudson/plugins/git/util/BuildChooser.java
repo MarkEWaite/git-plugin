@@ -140,15 +140,22 @@ public abstract class BuildChooser implements ExtensionPoint, Describable<BuildC
     }
 
     public BuildChooserDescriptor getDescriptor() {
-        return (BuildChooserDescriptor)Jenkins.getInstance().getDescriptorOrDie(getClass());
+        Jenkins jenkins = Jenkins.getInstance();
+        if (jenkins == null) {
+            return null;
+        }
+        return (BuildChooserDescriptor)jenkins.getDescriptorOrDie(getClass());
     }
 
     /**
      * All the registered build choosers.
      */
     public static DescriptorExtensionList<BuildChooser,BuildChooserDescriptor> all() {
-        return Jenkins.getInstance()
-               .<BuildChooser,BuildChooserDescriptor>getDescriptorList(BuildChooser.class);
+        Jenkins jenkins = Jenkins.getInstance();
+        if (jenkins == null) {
+            return null;
+        }
+        return jenkins.<BuildChooser,BuildChooserDescriptor>getDescriptorList(BuildChooser.class);
     }
 
     /**
