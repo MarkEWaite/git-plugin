@@ -142,7 +142,7 @@ public class GitUtils implements Serializable {
      */
     public static EnvVars getPollEnvironment(AbstractProject p, FilePath ws, Launcher launcher, TaskListener listener, boolean reuseLastBuildEnv)
         throws IOException,InterruptedException {
-        EnvVars env;
+        EnvVars env = null;
         StreamBuildListener buildListener = new StreamBuildListener((OutputStream)listener.getLogger());
         AbstractBuild b = p.getLastBuild();
 
@@ -158,14 +158,21 @@ public class GitUtils implements Serializable {
             Node lastBuiltOn = b.getBuiltOn();
 
             if (lastBuiltOn != null) {
-                env = lastBuiltOn.toComputer().getEnvironment().overrideAll(b.getCharacteristicEnvVars());
-                for (NodeProperty nodeProperty: lastBuiltOn.getNodeProperties()) {
-                    Environment environment = nodeProperty.setUp(b, launcher, (BuildListener)buildListener);
-                    if (environment != null) {
-                        environment.buildEnvVars(env);
+                Computer computer = lastBuiltOn.toComputer();
+                if (computer != null) {
+                    EnvVars testEnv = computer.getEnvironment();
+                    if (testEnv != null) {
+                        env = testEnv.overrideAll(b.getCharacteristicEnvVars());
+                        for (NodeProperty nodeProperty : lastBuiltOn.getNodeProperties()) {
+                            Environment environment = nodeProperty.setUp(b, launcher, (BuildListener) buildListener);
+                            if (environment != null) {
+                                environment.buildEnvVars(env);
+                            }
+                        }
                     }
                 }
-            } else {
+            }
+            if (env == null) {
                 env = new EnvVars(System.getenv());
             }
 
