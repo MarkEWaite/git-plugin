@@ -52,13 +52,13 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
     private boolean pushMerge;
     private boolean pushOnlyIfSuccess;
     private boolean forcePush;
-    
+
     private List<TagToPush> tagsToPush;
     // Pushes HEAD to these locations
     private List<BranchToPush> branchesToPush;
     // notes support
     private List<NoteToPush> notesToPush;
-    
+
     @DataBoundConstructor
     public GitPublisher(List<TagToPush> tagsToPush,
                         List<BranchToPush> branchesToPush,
@@ -78,7 +78,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
     public boolean isPushOnlyIfSuccess() {
         return pushOnlyIfSuccess;
     }
-    
+
     public boolean isPushMerge() {
         return pushMerge;
     }
@@ -107,7 +107,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
         }
         return !notesToPush.isEmpty();
     }
-    
+
     public List<TagToPush> getTagsToPush() {
         if (tagsToPush == null) {
             tagsToPush = new ArrayList<TagToPush>();
@@ -123,7 +123,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
 
         return branchesToPush;
     }
-    
+
     public List<NoteToPush> getNotesToPush() {
         if (notesToPush == null) {
             notesToPush = new ArrayList<NoteToPush>();
@@ -131,8 +131,8 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
 
         return notesToPush;
     }
-    
-    
+
+
     public BuildStepMonitor getRequiredMonitorService() {
         return BuildStepMonitor.BUILD;
     }
@@ -148,21 +148,23 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
             }
         };
     }
-    
+
     private String replaceAdditionalEnvironmentalVariables(String input, AbstractBuild<?, ?> build){
     	if (build == null){
     		return input;
     	}
-        
-        final Result result = build.getResult();
-        final String buildResult = result != null ? result.toString() : "";
-        final String buildDuration = build.getDurationString().replaceAll("and counting", "");
-        
+        String buildResult = "";
+        Result result = build.getResult();
+        if (result != null) {
+            buildResult = result.toString();
+        }
+        String buildDuration = build.getDurationString().replaceAll("and counting", "");
+
         input = input.replaceAll("\\$BUILDRESULT", buildResult);
         input = input.replaceAll("\\$BUILDDURATION", buildDuration);
         return input;
     }
-    
+
     @Override
     public boolean perform(AbstractBuild<?, ?> build,
                            Launcher launcher, final BuildListener listener)
@@ -297,7 +299,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
                     }
                 }
             }
-            
+
             if (isPushBranches()) {
                 for (final BranchToPush b : branchesToPush) {
                     if (b.getBranchName() == null)
@@ -308,7 +310,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
 
                     final String branchName = environment.expand(b.getBranchName());
                     final String targetRepo = environment.expand(b.getTargetRepoName());
-                    
+
                     try {
                     	// Lookup repository with unexpanded name as GitSCM stores them unexpanded
                         RemoteConfig remote = gitSCM.getRepositoryByName(b.getTargetRepoName());
@@ -333,7 +335,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
                     }
                 }
             }
-                     
+
             if (isPushNotes()) {
                 for (final NoteToPush b : notesToPush) {
                     if (b.getnoteMsg() == null)
@@ -345,7 +347,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
                     final String noteNamespace = environment.expand(b.getnoteNamespace());
                     final String targetRepo = environment.expand(b.getTargetRepoName());
                     final boolean noteReplace = b.getnoteReplace();
-                    
+
                     try {
                     	// Lookup repository with unexpanded name as GitSCM stores them unexpanded
                         RemoteConfig remote = gitSCM.getRepositoryByName(b.getTargetRepoName());
@@ -377,7 +379,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
                     }
                 }
             }
-            
+
             return true;
         }
     }
@@ -400,7 +402,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
 
         return this;
     }
-    
+
     @Extension(ordinal=-1)
     public static class DescriptorImpl extends BuildStepDescriptor<Publisher> {
         public String getDisplayName() {
@@ -430,11 +432,11 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
         public FormValidation doCheckBranchName(@QueryParameter String value) {
             return checkFieldNotEmpty(value, "Branch Name");
         }
-        
+
         public FormValidation doCheckNoteMsg(@QueryParameter String value) {
             return checkFieldNotEmpty(value, "Note");
         }
-        
+
         public FormValidation doCheckRemote(
                 @AncestorInPath AbstractProject project, StaplerRequest req)
                 throws IOException, ServletException {
@@ -463,7 +465,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
 
             return FormValidation.ok();
         }
-                
+
         public boolean isApplicable(Class<? extends AbstractProject> jobType) {
             return true;
         }
@@ -480,13 +482,13 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
 
     public static abstract class PushConfig extends AbstractDescribableImpl<PushConfig> implements Serializable {
         private static final long serialVersionUID = 1L;
-        
+
         private String targetRepoName;
 
         public PushConfig(String targetRepoName) {
             this.targetRepoName = Util.fixEmptyAndTrim(targetRepoName);
         }
-        
+
         public String getTargetRepoName() {
             return targetRepoName;
         }
@@ -494,7 +496,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
         public void setTargetRepoName(String targetRepoName) {
             this.targetRepoName = targetRepoName;
         }
-        
+
         public void setEmptyTargetRepoToOrigin(){
             if (targetRepoName == null || targetRepoName.trim().length()==0){
             	targetRepoName = "origin";
@@ -565,7 +567,7 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
             }
         }
     }
-    
+
 
     public static final class NoteToPush extends PushConfig {
         private static final long serialVersionUID = 1L;
@@ -576,11 +578,11 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
         public String getnoteMsg() {
             return noteMsg;
         }
-        
+
         public String getnoteNamespace() {
         	return noteNamespace;
         }
-        
+
         public boolean getnoteReplace() {
         	return noteReplace;
         }
@@ -590,12 +592,12 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
         	super(targetRepoName);
             this.noteMsg = Util.fixEmptyAndTrim(noteMsg);
             this.noteReplace = noteReplace;
-            
+
             if ( noteNamespace != null && noteNamespace.trim().length()!=0)
     			this.noteNamespace = Util.fixEmptyAndTrim(noteNamespace);
     		else
     			this.noteNamespace = "master";
-            
+
         }
 
         @Extension
@@ -606,5 +608,5 @@ public class GitPublisher extends Recorder implements Serializable, MatrixAggreg
             }
         }
     }
-    
+
 }
