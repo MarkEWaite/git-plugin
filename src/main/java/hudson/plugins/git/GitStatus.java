@@ -275,11 +275,6 @@ public class GitStatus extends AbstractModelObject implements UnprotectedRootAct
 
                 boolean scmFound = false,
                         urlFound = false;
-                Jenkins jenkins = Jenkins.getInstance();
-                if (jenkins == null) {
-                    LOGGER.severe("Jenkins.getInstance() is null in GitStatus.onNotifyCommit");
-                    return result;
-                }
                 for (final Item project : jenkins.getAllItems()) {
                     SCMTriggerItem scmTriggerItem = SCMTriggerItem.SCMTriggerItems.asSCMTriggerItem(project);
                     if (scmTriggerItem == null) {
