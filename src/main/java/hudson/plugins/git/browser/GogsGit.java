@@ -1,50 +1,48 @@
 package hudson.plugins.git.browser;
 
-import hudson.EnvVars;
 import hudson.Extension;
-import hudson.model.AbstractProject;
 import hudson.model.Descriptor;
-import hudson.model.EnvironmentContributor;
-import hudson.model.ItemGroup;
-import hudson.model.Job;
-import hudson.model.TaskListener;
 import hudson.plugins.git.GitChangeSet;
 import hudson.plugins.git.GitChangeSet.Path;
 import hudson.scm.EditType;
 import hudson.scm.RepositoryBrowser;
 import net.sf.json.JSONObject;
 
-import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
 
 /**
- * Git Browser URLs
+ * @author Norbert Lange (nolange79@gmail.com)
  */
-public class GithubWeb extends GitRepositoryBrowser {
+public class GogsGit extends GitRepositoryBrowser {
 
     private static final long serialVersionUID = 1L;
 
     @DataBoundConstructor
-    public GithubWeb(String repoUrl) {
+    public GogsGit(String repoUrl) {
         super(repoUrl);
     }
 
+    /**
+     * Creates a link to the change set
+     * http://[GogsGit URL]/commit/[commit]
+     *
+     * @param changeSet commit hash
+     * @return change set link
+     * @throws IOException
+     */
     @Override
     public URL getChangeSetLink(GitChangeSet changeSet) throws IOException {
         URL url = getUrl();
-        return new URL(url, url.getPath()+"commit/" + changeSet.getId());
+        return new URL(url, url.getPath() + "commit/" + changeSet.getId().toString());
     }
 
     /**
      * Creates a link to the file diff.
-     * http://[GitHib URL]/commit/573670a3bb1f3b939e87f1dee3e99b6bfe281fcb#diff-N
+     * http://[GogsGit URL]/commit/[commit]#diff-N
      *
      * @param path affected file path
      * @return diff link
@@ -67,18 +65,17 @@ public class GithubWeb extends GitRepositoryBrowser {
      * @throws IOException
      */
     private URL getDiffLinkRegardlessOfEditType(Path path) throws IOException {
-	// Github seems to sort the output alphabetically by the path.
-        return new URL(getChangeSetLink(path.getChangeSet()), "#diff-" + String.valueOf(getIndexOfPath(path)));
+        // Gogs diff indices begin at 1.
+        return new URL(getChangeSetLink(path.getChangeSet()), "#diff-" + String.valueOf(getIndexOfPath(path) + 1));
     }
 
     /**
      * Creates a link to the file.
-     * http://[GitHib URL]/blob/573670a3bb1f3b939e87f1dee3e99b6bfe281fcb/src/main/java/hudson/plugins/git/browser/GithubWeb.java
-     *  Github seems to have no URL for deleted files, so just return
-     * a difflink instead.
+     * http://[GogsGit URL]/src/[commit]/[path]
+     * Deleted Files link to the parent version. No easy way to find it
      *
-     * @param path file
-     * @return file link
+     * @param path affected file path
+     * @return diff link
      * @throws IOException
      */
     @Override
@@ -86,22 +83,20 @@ public class GithubWeb extends GitRepositoryBrowser {
         if (path.getEditType().equals(EditType.DELETE)) {
             return getDiffLinkRegardlessOfEditType(path);
         } else {
-            final String spec = "blob/" + path.getChangeSet().getId() + "/" + path.getPath();
             URL url = getUrl();
-            return new URL(url, url.getPath() + spec);
+            return new URL(url, url.getPath() + "src/" + path.getChangeSet().getId().toString() + "/" + path.getPath());
         }
     }
 
     @Extension
-    public static class GithubWebDescriptor extends Descriptor<RepositoryBrowser<?>> {
+    public static class GogsGitDescriptor extends Descriptor<RepositoryBrowser<?>> {
         public String getDisplayName() {
-            return "githubweb";
+            return "gogs";
         }
 
         @Override
-		public GithubWeb newInstance(StaplerRequest req, JSONObject jsonObject) throws FormException {
-			return req.bindJSON(GithubWeb.class, jsonObject);
-		}
-	}
-
+        public GogsGit newInstance(StaplerRequest req, JSONObject jsonObject) throws FormException {
+            return req.bindJSON(GogsGit.class, jsonObject);
+        }
+    }
 }

@@ -37,7 +37,6 @@ import hudson.tasks.Publisher;
 import hudson.triggers.SCMTrigger;
 import hudson.util.DescribableList;
 import hudson.util.FormValidation;
-import hudson.util.IOException2;
 import hudson.util.ListBoxModel;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
@@ -571,7 +570,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         try {
             return compareRemoteRevisionWithImpl( project, launcher, workspace, listener);
         } catch (GitException e){
-            throw new IOException2(e);
+            throw new IOException(e);
         }
     }
 
