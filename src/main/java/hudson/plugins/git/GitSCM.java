@@ -319,6 +319,12 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         return browser;
     }
 
+    private static final Pattern[] URL_PATTERNS = {
+        Pattern.compile("https://github[.]com/([^/]+/[^/]+?)([.]git)*/*"),
+        Pattern.compile("(?:git@)?github[.]com:([^/]+/[^/]+?)([.]git)*/*"),
+        Pattern.compile("ssh://(?:git@)?github[.]com/([^/]+/[^/]+?)([.]git)*/*"),
+    };
+
     @Override public RepositoryBrowser<?> guessBrowser() {
         Set<String> webUrls = new HashSet<String>();
         if (remoteRepositories != null) {
@@ -326,13 +332,11 @@ public class GitSCM extends GitSCMBackwardCompatibility {
                 for (URIish uriIsh : config.getURIs()) {
                     String uri = uriIsh.toString();
                     // TODO make extensible by introducing an abstract GitRepositoryBrowserDescriptor
-                    Matcher m = Pattern.compile("(https://github[.]com/[^/]+/[^/]+)[.]git").matcher(uri);
-                    if (m.matches()) {
-                        webUrls.add(m.group(1) + "/");
-                    }
-                    m = Pattern.compile("git@github[.]com:([^/]+/[^/]+)[.]git").matcher(uri);
-                    if (m.matches()) {
-                        webUrls.add("https://github.com/" + m.group(1) + "/");
+                    for (Pattern p : URL_PATTERNS) {
+                        Matcher m = p.matcher(uri);
+                        if (m.matches()) {
+                            webUrls.add("https://github.com/" + m.group(1) + "/");
+                        }
                     }
                 }
             }
@@ -571,21 +575,6 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         }
     }
 
-    private static Node workspaceToNode(FilePath workspace) { // TODO https://trello.com/c/doFFMdUm/46-filepath-getcomputer
-        Jenkins j = Jenkins.getInstance();
-        if (workspace != null && workspace.isRemote()) {
-            for (Computer c : j.getComputers()) {
-                if (c.getChannel() == workspace.getChannel()) {
-                    Node n = c.getNode();
-                    if (n != null) {
-                        return n;
-                    }
-                }
-            }
-        }
-        return j;
-    }
-
     public static final Pattern GIT_REF = Pattern.compile("(refs/[^/]+)/.*");
 
     private PollingResult compareRemoteRevisionWithImpl(Job<?, ?> project, Launcher launcher, FilePath workspace, final TaskListener listener) throws IOException, InterruptedException {
@@ -678,7 +667,8 @@ public class GitSCM extends GitSCMBackwardCompatibility {
             return NO_CHANGES;
         }
 
-        final EnvVars environment = project instanceof AbstractProject ? GitUtils.getPollEnvironment((AbstractProject) project, workspace, launcher, listener) : new EnvVars();
+        final Node node = GitUtils.workspaceToNode(workspace);
+        final EnvVars environment = project instanceof AbstractProject ? GitUtils.getPollEnvironment((AbstractProject) project, workspace, launcher, listener) : project.getEnvironment(node, listener);
 
         FilePath workingDirectory = workingDirectory(project,workspace,environment,listener);
 
@@ -687,7 +677,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
             return BUILD_NOW;
         }
 
-        GitClient git = createClient(listener, environment, project, workspaceToNode(workspace), workingDirectory);
+        GitClient git = createClient(listener, environment, project, node, workingDirectory);
 
         if (git.hasGitRepo()) {
             // Repo is there - do a fetch
@@ -726,7 +716,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         if (ws != null) {
             ws.mkdirs(); // ensure it exists
         }
-        return createClient(listener,environment, build.getParent(), workspaceToNode(workspace), ws);
+        return createClient(listener,environment, build.getParent(), GitUtils.workspaceToNode(workspace), ws);
     }
 
     /*package*/ GitClient createClient(TaskListener listener, EnvVars environment, Job project, Node n, FilePath ws) throws IOException, InterruptedException {

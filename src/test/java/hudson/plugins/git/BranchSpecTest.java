@@ -7,7 +7,7 @@ import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 
 
-public class TestBranchSpec {
+public class BranchSpecTest {
     @Test
     public void testMatch() {
 
@@ -117,60 +117,71 @@ public class TestBranchSpec {
 
     @Test
     public void testEmptyName() {
-    	BranchSpec branchSpec = new BranchSpec("");
-    	assertEquals("**",branchSpec.getName());
+        BranchSpec branchSpec = new BranchSpec("");
+        assertEquals("**",branchSpec.getName());
     }
     
     @Test
     public void testNullName() {
-    	boolean correctExceptionThrown = false;
-    	try {
-    		BranchSpec branchSpec = new BranchSpec(null);
-    	} catch (IllegalArgumentException e) {
-    		correctExceptionThrown = true;
-    	}
-    	assertTrue(correctExceptionThrown);
+        boolean correctExceptionThrown = false;
+        try {
+                BranchSpec branchSpec = new BranchSpec(null);
+        } catch (IllegalArgumentException e) {
+                correctExceptionThrown = true;
+        }
+        assertTrue(correctExceptionThrown);
     }
     
     @Test
     public void testNameTrimming() {
-    	BranchSpec branchSpec = new BranchSpec(" master ");
-    	assertEquals("master",branchSpec.getName());
-    	branchSpec.setName(" other ");
-    	assertEquals("other",branchSpec.getName());
+        BranchSpec branchSpec = new BranchSpec(" master ");
+        assertEquals("master",branchSpec.getName());
+        branchSpec.setName(" other ");
+        assertEquals("other",branchSpec.getName());
     }
     
     @Test
     public void testUsesRefsHeads() {
-    	BranchSpec m = new BranchSpec("refs/heads/j*n*");
-    	assertTrue(m.matches("refs/heads/jenkins"));
-    	assertTrue(m.matches("refs/heads/jane"));
-    	assertTrue(m.matches("refs/heads/jones"));
+        BranchSpec m = new BranchSpec("refs/heads/j*n*");
+        assertTrue(m.matches("refs/heads/jenkins"));
+        assertTrue(m.matches("refs/heads/jane"));
+        assertTrue(m.matches("refs/heads/jones"));
 
-    	assertFalse(m.matches("origin/jenkins"));
-    	assertFalse(m.matches("remote/origin/jane"));
+        assertFalse(m.matches("origin/jenkins"));
+        assertFalse(m.matches("remote/origin/jane"));
     }
     
     @Test
     public void testUsesJavaPatternDirectlyIfPrefixedWithColon() {
-    	BranchSpec m = new BranchSpec(":^(?!(origin/prefix)).*");
-    	assertTrue(m.matches("origin"));
-    	assertTrue(m.matches("origin/master"));
-    	assertTrue(m.matches("origin/feature"));
+        BranchSpec m = new BranchSpec(":^(?!(origin/prefix)).*");
+        assertTrue(m.matches("origin"));
+        assertTrue(m.matches("origin/master"));
+        assertTrue(m.matches("origin/feature"));
 
-    	assertFalse(m.matches("origin/prefix_123"));
-    	assertFalse(m.matches("origin/prefix"));
-    	assertFalse(m.matches("origin/prefix-abc"));
+        assertFalse(m.matches("origin/prefix_123"));
+        assertFalse(m.matches("origin/prefix"));
+        assertFalse(m.matches("origin/prefix-abc"));
     }
 
     @Test
     public void testUsesJavaPatternWithRepetition() {
-    	// match pattern from JENKINS-26842
-    	BranchSpec m = new BranchSpec(":origin/release-\\d{8}");
-    	assertTrue(m.matches("origin/release-20150101"));
-    	assertFalse(m.matches("origin/release-2015010"));
-    	assertFalse(m.matches("origin/release-201501011"));
-    	assertFalse(m.matches("origin/release-20150101-something"));
+        // match pattern from JENKINS-26842
+        BranchSpec m = new BranchSpec(":origin/release-\\d{8}");
+        assertTrue(m.matches("origin/release-20150101"));
+        assertFalse(m.matches("origin/release-2015010"));
+        assertFalse(m.matches("origin/release-201501011"));
+        assertFalse(m.matches("origin/release-20150101-something"));
+    }
+
+    @Test
+    public void testUsesJavaPatternToExcludeMultipleBranches() {
+        BranchSpec m = new BranchSpec(":^(?!origin/master$|origin/develop$).*");
+        assertTrue(m.matches("origin/branch1"));
+        assertTrue(m.matches("origin/branch-2"));
+        assertTrue(m.matches("origin/master123"));
+        assertTrue(m.matches("origin/develop-123"));
+        assertFalse(m.matches("origin/master"));
+        assertFalse(m.matches("origin/develop"));
     }
 
     private EnvVars createEnvMap(String key, String value) {
