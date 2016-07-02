@@ -95,7 +95,7 @@ public abstract class AbstractGitSCMSource extends SCMSource {
     /**
      * Keep one lock per cache directory. Lazy populated, but never purge, except on restart.
      */
-    private static final ConcurrentMap<String, Lock> cacheLocks = new ConcurrentHashMap<String, Lock>();
+    private static final ConcurrentMap<String, Lock> cacheLocks = new ConcurrentHashMap<>();
 
     private static final Logger LOGGER = Logger.getLogger(AbstractGitSCMSource.class.getName());
 
@@ -189,15 +189,12 @@ public abstract class AbstractGitSCMSource extends SCMSource {
             final Repository repository = client.getRepository();
             try {
                 client.prune(new RemoteConfig(repository.getConfig(), remoteName));
-            } catch (UnsupportedOperationException e) {
-                e.printStackTrace(listener.error("Could not prune stale remotes"));
-            } catch (URISyntaxException e) {
+            } catch (UnsupportedOperationException | URISyntaxException e) {
                 e.printStackTrace(listener.error("Could not prune stale remotes"));
             }
             listener.getLogger().println("Getting remote branches...");
             SCMSourceCriteria branchCriteria = getCriteria();
-            RevWalk walk = new RevWalk(repository);
-            try {
+            try (RevWalk walk = new RevWalk(repository)) {
                 walk.setRetainBody(false);
                 for (Branch b : client.getRemoteBranches()) {
                     if (!b.getName().startsWith(remoteName + "/")) {
@@ -225,13 +222,8 @@ public abstract class AbstractGitSCMSource extends SCMSource {
 
                             @Override
                             public boolean exists(@NonNull String path) throws IOException {
-                                TreeWalk tw = TreeWalk.forPath(repository, path, tree);
-                                try {
+                                try (TreeWalk tw = TreeWalk.forPath(repository, path, tree)) {
                                     return tw != null;
-                                } finally {
-                                    if (tw != null) {
-                                        tw.release();
-                                    }
                                 }
                             }
                         };
@@ -249,8 +241,6 @@ public abstract class AbstractGitSCMSource extends SCMSource {
                         return;
                     }
                 }
-            } finally {
-                walk.dispose();
             }
 
             listener.getLogger().println("Done.");
@@ -313,7 +303,7 @@ public abstract class AbstractGitSCMSource extends SCMSource {
 
     protected List<UserRemoteConfig> getRemoteConfigs() {
         List<RefSpec> refSpecs = getRefSpecs();
-        List<UserRemoteConfig> result = new ArrayList<UserRemoteConfig>(refSpecs.size());
+        List<UserRemoteConfig> result = new ArrayList<>(refSpecs.size());
         String remote = getRemote();
         for (RefSpec refSpec : refSpecs) {
             result.add(new UserRemoteConfig(remote, getRemoteName(), refSpec.toString(), getCredentialsId()));

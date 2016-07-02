@@ -90,7 +90,7 @@ public class GitChangeSet extends ChangeLogSet.Entry {
     private String title;
     private String id;
     private String parentCommit;
-    private Collection<Path> paths = new HashSet<Path>();
+    private Collection<Path> paths = new HashSet<>();
     private boolean authorOrCommitter;
 
     /**
@@ -322,7 +322,7 @@ public class GitChangeSet extends ChangeLogSet.Entry {
 
     @Override
     public Collection<String> getAffectedPaths() {
-        Collection<String> affectedPaths = new HashSet<String>(this.paths.size());
+        Collection<String> affectedPaths = new HashSet<>(this.paths.size());
         for (Path file : this.paths) {
             affectedPaths.add(file.getPath());
         }

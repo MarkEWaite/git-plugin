@@ -60,7 +60,7 @@ public class GitUtils implements Serializable {
      * @throws GitException
      */
     public Collection<Revision> getAllBranchRevisions() throws GitException, IOException, InterruptedException {
-        Map<ObjectId, Revision> revisions = new HashMap<ObjectId, Revision>();
+        Map<ObjectId, Revision> revisions = new HashMap<>();
         for (Branch b : git.getRemoteBranches()) {
             Revision r = revisions.get(b.getSHA1());
             if (r == null) {
@@ -104,8 +104,8 @@ public class GitUtils implements Serializable {
     }
 
     public Revision sortBranchesForRevision(Revision revision, List<BranchSpec> branchOrder, EnvVars env) {
-        ArrayList<Branch> orderedBranches = new ArrayList<Branch>(revision.getBranches().size());
-        ArrayList<Branch> revisionBranches = new ArrayList<Branch>(revision.getBranches());
+        ArrayList<Branch> orderedBranches = new ArrayList<>(revision.getBranches().size());
+        ArrayList<Branch> revisionBranches = new ArrayList<>(revision.getBranches());
 
         for(BranchSpec branchSpec : branchOrder) {
             for (Iterator<Branch> i = revisionBranches.iterator(); i.hasNext();) {
@@ -134,14 +134,68 @@ public class GitUtils implements Serializable {
         //        \-----C
 
         // we only want (B) and (C), as (A) is an ancestor (old).
-        final List<Revision> l = new ArrayList<Revision>(revisions);
+        final List<Revision> l = new ArrayList<>(revisions);
 
         // Bypass any rev walks if only one branch or less
         if (l.size() <= 1)
             return l;
 
         try {
-            return git.withRepository(new RepositoryCallbackImpl(l, revisions));
+            return git.withRepository(new RepositoryCallback<List<Revision>>() {
+                public List<Revision> invoke(Repository repo, VirtualChannel channel) throws IOException, InterruptedException {
+
+                    // Commit nodes that we have already reached
+                    Set<RevCommit> visited = new HashSet<>();
+                    // Commits nodes that are tips if we don't reach them walking back from
+                    // another node
+                    Map<RevCommit, Revision> tipCandidates = new HashMap<>();
+
+                    long calls = 0;
+                    final long start = System.currentTimeMillis();
+
+                    final boolean log = LOGGER.isLoggable(Level.FINE);
+
+                    if (log)
+                        LOGGER.fine(MessageFormat.format(
+                                "Computing merge base of {0}  branches", l.size()));
+
+                    try (RevWalk walk = new RevWalk(repo)) {
+                        walk.setRetainBody(false);
+
+                        // Each commit passed in starts as a potential tip.
+                        // We walk backwards in the commit's history, until we reach the
+                        // beginning or a commit that we have already visited. In that case,
+                        // we mark that one as not a potential tip.
+                        for (Revision r : revisions) {
+                            walk.reset();
+                            RevCommit head = walk.parseCommit(r.getSha1());
+
+                            if (visited.contains(head)) {
+                              continue;
+                            }
+
+                            tipCandidates.put(head, r);
+
+                            walk.markStart(head);
+                            for (RevCommit commit : walk) {
+                                calls++;
+                                if (visited.contains(commit)) {
+                                    tipCandidates.remove(commit);
+                                    break;
+                                }
+                                visited.add(commit);
+                            }
+                        }
+                    }
+
+                    if (log)
+                        LOGGER.fine(MessageFormat.format(
+                                "Computed merge bases in {0} commit steps and {1} ms", calls,
+                                (System.currentTimeMillis() - start)));
+
+                    return new ArrayList<>(tipCandidates.values());
+                }
+            });
         } catch (IOException e) {
             throw new GitException("Error computing merge base", e);
         }
@@ -256,7 +310,7 @@ public class GitUtils implements Serializable {
 
     public static String[] fixupNames(String[] names, String[] urls) {
         String[] returnNames = new String[urls.length];
-        Set<String> usedNames = new HashSet<String>();
+        Set<String> usedNames = new HashSet<>();
 
         for(int i=0; i<urls.length; i++) {
             String name = names[i];

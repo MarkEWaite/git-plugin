@@ -37,7 +37,7 @@ public class GitChangeSetUtil {
     }
 
     public static GitChangeSet genChangeSet(boolean authorOrCommitter, boolean useLegacyFormat, boolean hasParent) {
-        ArrayList<String> lines = new ArrayList<String>();
+        ArrayList<String> lines = new ArrayList<>();
         lines.add("Some header junk we should ignore...");
         lines.add("header line 2");
         lines.add("commit " + ID);
@@ -71,7 +71,7 @@ public class GitChangeSetUtil {
         TestCase.assertEquals("Commit title.", changeSet.getMsg());
         TestCase.assertEquals("Commit title.\nCommit extended description.\n", changeSet.getComment());
         TestCase.assertEquals("Commit title.\nCommit extended description.\n".replace("\n", "<br>"), changeSet.getCommentAnnotated());
-        HashSet<String> expectedAffectedPaths = new HashSet<String>(7);
+        HashSet<String> expectedAffectedPaths = new HashSet<>(7);
         expectedAffectedPaths.add("src/test/add.file");
         expectedAffectedPaths.add("src/test/deleted.file");
         expectedAffectedPaths.add("src/test/modified.file");
@@ -82,32 +82,40 @@ public class GitChangeSetUtil {
         Collection<GitChangeSet.Path> actualPaths = changeSet.getPaths();
         TestCase.assertEquals(6, actualPaths.size());
         for (GitChangeSet.Path path : actualPaths) {
-            if ("src/test/add.file".equals(path.getPath())) {
-                TestCase.assertEquals(EditType.ADD, path.getEditType());
-                TestCase.assertNull(path.getSrc());
-                TestCase.assertEquals("123abc456def789abc012def345abc678def901a", path.getDst());
-            } else if ("src/test/deleted.file".equals(path.getPath())) {
-                TestCase.assertEquals(EditType.DELETE, path.getEditType());
-                TestCase.assertEquals("123abc456def789abc012def345abc678def901a", path.getSrc());
-                TestCase.assertNull(path.getDst());
-            } else if ("src/test/modified.file".equals(path.getPath())) {
-                TestCase.assertEquals(EditType.EDIT, path.getEditType());
-                TestCase.assertEquals("123abc456def789abc012def345abc678def901a", path.getSrc());
-                TestCase.assertEquals("bc234def567abc890def123abc456def789abc01", path.getDst());
-            } else if ("src/test/renamedFrom.file".equals(path.getPath())) {
-                TestCase.assertEquals(EditType.DELETE, path.getEditType());
-                TestCase.assertEquals("123abc456def789abc012def345abc678def901a", path.getSrc());
-                TestCase.assertEquals("bc234def567abc890def123abc456def789abc01", path.getDst());
-            } else if ("src/test/renamedTo.file".equals(path.getPath())) {
-                TestCase.assertEquals(EditType.ADD, path.getEditType());
-                TestCase.assertEquals("123abc456def789abc012def345abc678def901a", path.getSrc());
-                TestCase.assertEquals("bc234def567abc890def123abc456def789abc01", path.getDst());
-            } else if ("src/test/copyOf.file".equals(path.getPath())) {
-                TestCase.assertEquals(EditType.ADD, path.getEditType());
-                TestCase.assertEquals("bc234def567abc890def123abc456def789abc01", path.getSrc());
-                TestCase.assertEquals("123abc456def789abc012def345abc678def901a", path.getDst());
-            } else {
-                TestCase.fail("Unrecognized path.");
+            if (null != path.getPath()) switch (path.getPath()) {
+                case "src/test/add.file":
+                    TestCase.assertEquals(EditType.ADD, path.getEditType());
+                    TestCase.assertNull(path.getSrc());
+                    TestCase.assertEquals("123abc456def789abc012def345abc678def901a", path.getDst());
+                    break;
+                case "src/test/deleted.file":
+                    TestCase.assertEquals(EditType.DELETE, path.getEditType());
+                    TestCase.assertEquals("123abc456def789abc012def345abc678def901a", path.getSrc());
+                    TestCase.assertNull(path.getDst());
+                    break;
+                case "src/test/modified.file":
+                    TestCase.assertEquals(EditType.EDIT, path.getEditType());
+                    TestCase.assertEquals("123abc456def789abc012def345abc678def901a", path.getSrc());
+                    TestCase.assertEquals("bc234def567abc890def123abc456def789abc01", path.getDst());
+                    break;
+                case "src/test/renamedFrom.file":
+                    TestCase.assertEquals(EditType.DELETE, path.getEditType());
+                    TestCase.assertEquals("123abc456def789abc012def345abc678def901a", path.getSrc());
+                    TestCase.assertEquals("bc234def567abc890def123abc456def789abc01", path.getDst());
+                    break;
+                case "src/test/renamedTo.file":
+                    TestCase.assertEquals(EditType.ADD, path.getEditType());
+                    TestCase.assertEquals("123abc456def789abc012def345abc678def901a", path.getSrc());
+                    TestCase.assertEquals("bc234def567abc890def123abc456def789abc01", path.getDst());
+                    break;
+                case "src/test/copyOf.file":
+                    TestCase.assertEquals(EditType.ADD, path.getEditType());
+                    TestCase.assertEquals("bc234def567abc890def123abc456def789abc01", path.getSrc());
+                    TestCase.assertEquals("123abc456def789abc012def345abc678def901a", path.getDst());
+                    break;
+                default:
+                    TestCase.fail("Unrecognized path.");
+                    break;
             }
         }
     }

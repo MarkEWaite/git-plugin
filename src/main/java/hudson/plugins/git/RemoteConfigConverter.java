@@ -90,21 +90,32 @@ public class RemoteConfigConverter implements Converter {
             for (Entry<String, Collection<String>> entry : map.entrySet()) {
                 String key = entry.getKey();
                 Collection<String> values = entry.getValue();
-                if (KEY_URL.equals(key))
-                    uris = values.toArray(new String[values.size()]);
-                else if (KEY_FETCH.equals(key))
-                    fetch = values.toArray(new String[values.size()]);
-                else if (KEY_PUSH.equals(key))
-                    push = values.toArray(new String[values.size()]);
-                else if (KEY_UPLOADPACK.equals(key))
-                    for (String value : values)
-                        uploadpack = value;
-                else if (KEY_RECEIVEPACK.equals(key))
-                    for (String value : values)
-                        receivepack = value;
-                else if (KEY_TAGOPT.equals(key))
-                    for (String value : values)
-                        tagopt = value;
+                if (null != key)
+                    switch (key) {
+                    case KEY_URL:
+                        uris = values.toArray(new String[values.size()]);
+                        break;
+                    case KEY_FETCH:
+                        fetch = values.toArray(new String[values.size()]);
+                        break;
+                    case KEY_PUSH:
+                        push = values.toArray(new String[values.size()]);
+                        break;
+                    case KEY_UPLOADPACK:
+                        for (String value : values)
+                            uploadpack = value;
+                        break;
+                    case KEY_RECEIVEPACK:
+                        for (String value : values)
+                            receivepack = value;
+                        break;
+                    case KEY_TAGOPT:
+                        for (String value : values)
+                            tagopt = value;
+                        break;
+                    default:
+                        break;
+                }
             }
         }
 
@@ -112,13 +123,13 @@ public class RemoteConfigConverter implements Converter {
                 ClassNotFoundException {
             name = in.readUTF();
             final int items = in.readInt();
-            Map<String, Collection<String>> map = new HashMap<String, Collection<String>>();
+            Map<String, Collection<String>> map = new HashMap<>();
             for (int i = 0; i < items; i++) {
                 String key = in.readUTF();
                 String value = in.readUTF();
                 Collection<String> values = map.get(key);
                 if (values == null) {
-                    values = new ArrayList<String>();
+                    values = new ArrayList<>();
                     map.put(key, values);
                 }
                 values.add(value);
@@ -218,11 +229,7 @@ public class RemoteConfigConverter implements Converter {
             proxy.readExternal(objectInput);
             objectInput.popCallback();
             return proxy.toRemote();
-        } catch (IOException e) {
-            throw new ConversionException("Unmarshal failed", e);
-        } catch (ClassNotFoundException e) {
-            throw new ConversionException("Unmarshal failed", e);
-        } catch (URISyntaxException e) {
+        } catch (IOException | ClassNotFoundException | URISyntaxException e) {
             throw new ConversionException("Unmarshal failed", e);
         }
     }
