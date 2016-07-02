@@ -359,7 +359,6 @@ public class GitUtils implements Serializable {
             long calls = 0;
             final long start = System.currentTimeMillis();
 
-            RevWalk walk = new RevWalk(repo);
 
             final boolean log = LOGGER.isLoggable(Level.FINE);
 
@@ -368,7 +367,7 @@ public class GitUtils implements Serializable {
                         "Computing merge base of {0}  branches", l.size()));
             }
 
-            try {
+            try (RevWalk walk = new RevWalk(repo)) {
                 walk.setRetainBody(false);
 
                 // Each commit passed in starts as a potential tip.
@@ -395,9 +394,6 @@ public class GitUtils implements Serializable {
                         visited.add(commit);
                     }
                 }
-
-            } finally {
-                walk.release();
             }
 
             if (log) {
