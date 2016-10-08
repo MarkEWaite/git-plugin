@@ -32,7 +32,9 @@ import org.apache.commons.io.FileUtils;
 import static org.junit.Assert.*;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.TemporaryDirectoryAllocator;
 
@@ -44,7 +46,10 @@ public abstract class SCMTriggerTest extends AbstractGitProject
     private Properties namespaceRepoCommits;
     private ExecutorService singleThreadExecutor;
     protected boolean expectChanges = false;
-        
+
+    @Rule
+    public Timeout globalTimeout = Timeout.seconds(60); // 1 minute max per test method
+
     @After
     public void tearDown() throws Exception
     {
