@@ -6,6 +6,7 @@ import com.cloudbees.plugins.credentials.common.StandardCredentials;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
