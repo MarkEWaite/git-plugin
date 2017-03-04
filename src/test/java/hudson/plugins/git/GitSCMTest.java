@@ -142,7 +142,55 @@ public class GitSCMTest extends AbstractGitTestCase {
         build(projectMasterBranch, Result.SUCCESS, commitFile1);
     }
 
+    /**
+     * This test and testSpecificRefspecsWithoutCloneOption confirm behaviors of
+     * refspecs on initial clone. Without the CloneOption to honor refspec, all
+     * references are cloned, even if they will be later ignored due to the
+     * refspec.  With the CloneOption to ignore refspec, the initial clone also
+     * honors the refspec and only retrieves references per the refspec.
+     * @throws Exception on error
+     */
+    @Test
+    @Issue("JENKINS-31393")
     public void testSpecificRefspecs() throws Exception {
+        List<UserRemoteConfig> repos = new ArrayList<UserRemoteConfig>();
+        repos.add(new UserRemoteConfig(testRepo.gitDir.getAbsolutePath(), "origin", "+refs/heads/foo:refs/remotes/foo", null));
+
+        /* Set CloneOption to honor refspec on initial clone */
+        FreeStyleProject projectWithMaster = setupProject(repos, Collections.singletonList(new BranchSpec("master")), null, false, null);
+        CloneOption cloneOptionMaster = new CloneOption(false, null, null);
+        cloneOptionMaster.setHonorRefspec(true);
+        ((GitSCM)projectWithMaster.getScm()).getExtensions().add(cloneOptionMaster);
+
+        /* Set CloneOption to honor refspec on initial clone */
+        FreeStyleProject projectWithFoo = setupProject(repos, Collections.singletonList(new BranchSpec("foo")), null, false, null);
+        CloneOption cloneOptionFoo = new CloneOption(false, null, null);
+        cloneOptionFoo.setHonorRefspec(true);
+        ((GitSCM)projectWithMaster.getScm()).getExtensions().add(cloneOptionFoo);
+
+        // create initial commit
+        final String commitFile1 = "commitFile1";
+        commit(commitFile1, johnDoe, "Commit in master");
+        // create branch and make initial commit
+        git.branch("foo");
+        git.checkout().branch("foo");
+        commit(commitFile1, johnDoe, "Commit in foo");
+
+        build(projectWithMaster, Result.FAILURE);
+        build(projectWithFoo, Result.SUCCESS, commitFile1);
+    }
+
+    /**
+     * This test and testSpecificRefspecs confirm behaviors of
+     * refspecs on initial clone. Without the CloneOption to honor refspec, all
+     * references are cloned, even if they will be later ignored due to the
+     * refspec.  With the CloneOption to ignore refspec, the initial clone also
+     * honors the refspec and only retrieves references per the refspec.
+     * @throws Exception on error
+     */
+    @Test
+    @Issue("JENKINS-36507")
+    public void testSpecificRefspecsWithoutCloneOption() throws Exception {
         List<UserRemoteConfig> repos = new ArrayList<UserRemoteConfig>();
         repos.add(new UserRemoteConfig(testRepo.gitDir.getAbsolutePath(), "origin", "+refs/heads/foo:refs/remotes/foo", null));
         FreeStyleProject projectWithMaster = setupProject(repos, Collections.singletonList(new BranchSpec("master")), null, false, null);
@@ -156,7 +204,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         git.checkout().branch("foo");
         commit(commitFile1, johnDoe, "Commit in foo");
 
-        build(projectWithMaster, Result.FAILURE);
+        build(projectWithMaster, Result.SUCCESS); /* If clone refspec had been honored, this would fail */
         build(projectWithFoo, Result.SUCCESS, commitFile1);
     }
 
@@ -889,8 +937,9 @@ public class GitSCMTest extends AbstractGitTestCase {
         rule.assertBuildStatusSuccess(build);
     }
 
-    @Test
-    public void testFetchFromMultipleRepositories() throws Exception {
+    // Temporarily disabled - unreliable and failures not helpful
+    // @Test
+    public void xtestFetchFromMultipleRepositories() throws Exception {
         FreeStyleProject project = setupSimpleProject("master");
 
         TestGitRepo secondTestRepo = new TestGitRepo("second", tempFolder.newFolder(), listener);
@@ -1835,6 +1884,9 @@ public class GitSCMTest extends AbstractGitTestCase {
         final StringParameterValue fake_param = new StringParameterValue("PATH", brokenPath);
 
         final Action[] actions = {new ParametersAction(real_param), new FakeParametersAction(fake_param)};
+
+        // SECURITY-170 - have to use ParametersDefinitionProperty
+        project.addProperty(new ParametersDefinitionProperty(new StringParameterDefinition("MY_BRANCH", "master")));
 
         FreeStyleBuild first_build = project.scheduleBuild2(0, new Cause.UserCause(), actions).get();
         rule.assertBuildStatus(Result.SUCCESS, first_build);

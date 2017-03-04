@@ -39,7 +39,7 @@ public class AssemblaWeb extends GitRepositoryBrowser {
      *
      * @param changeSet commit hash
      * @return change set link
-     * @throws IOException
+     * @throws IOException on input or output error
      */
     @Override
     public URL getChangeSetLink(GitChangeSet changeSet) throws IOException {
@@ -54,7 +54,7 @@ public class AssemblaWeb extends GitRepositoryBrowser {
      *
      * @param path affected file path
      * @return diff link
-     * @throws IOException
+     * @throws IOException on input or output error
      */
     @Override
     public URL getDiffLink(Path path) throws IOException {
@@ -68,7 +68,7 @@ public class AssemblaWeb extends GitRepositoryBrowser {
      *
      * @param path affected file path
      * @return diff link
-     * @throws IOException
+     * @throws IOException on input or output error
      */
     @Override
     public URL getFileLink(Path path) throws IOException {

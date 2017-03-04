@@ -28,24 +28,38 @@ import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
 import com.cloudbees.plugins.credentials.domains.URIRequirementBuilder;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.Item;
 import hudson.model.Descriptor;
 import hudson.model.ParameterValue;
+import hudson.model.Queue;
+import hudson.model.queue.Tasks;
 import hudson.plugins.git.GitStatus;
 import hudson.plugins.git.GitSCM;
 import hudson.plugins.git.browser.GitRepositoryBrowser;
 import hudson.plugins.git.extensions.GitSCMExtensionDescriptor;
 import hudson.plugins.git.extensions.GitSCMExtension;
 import hudson.scm.RepositoryBrowser;
+import hudson.scm.SCM;
 import hudson.security.ACL;
+import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
+import java.util.Map;
 import jenkins.model.Jenkins;
 
+import jenkins.scm.api.SCMEvent;
+import jenkins.scm.api.SCMHead;
+import jenkins.scm.api.SCMHeadEvent;
+import jenkins.scm.api.SCMNavigator;
+import jenkins.scm.api.SCMRevision;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
+import org.apache.commons.lang.StringUtils;
 
 import jenkins.scm.api.SCMSource;
 import jenkins.scm.api.SCMSourceDescriptor;
@@ -65,12 +79,13 @@ import org.kohsuke.stapler.StaplerResponse;
 import java.io.PrintWriter;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
+
+import static org.apache.commons.lang.StringUtils.isBlank;
 
 /**
  * @author Stephen Connolly
@@ -85,6 +100,10 @@ public class GitSCMSource extends AbstractGitSCMSource {
     private final String remote;
 
     private final String credentialsId;
+
+    private final String remoteName;
+
+    private final String rawRefSpecs;
 
     private final String includes;
 
@@ -101,13 +120,19 @@ public class GitSCMSource extends AbstractGitSCMSource {
     private List<GitSCMExtension> extensions;
 
     @DataBoundConstructor
-    public GitSCMSource(String id, String remote, String credentialsId, String includes, String excludes, boolean ignoreOnPushNotifications) {
+    public GitSCMSource(String id, String remote, String credentialsId, String remoteName, String rawRefSpecs, String includes, String excludes, boolean ignoreOnPushNotifications) {
         super(id);
         this.remote = remote;
         this.credentialsId = credentialsId;
+        this.remoteName = remoteName;
+        this.rawRefSpecs = rawRefSpecs;
         this.includes = includes;
         this.excludes = excludes;
         this.ignoreOnPushNotifications = ignoreOnPushNotifications;
+    }
+
+    public GitSCMSource(String id, String remote, String credentialsId, String includes, String excludes, boolean ignoreOnPushNotifications) {
+        this(id, remote, credentialsId, null, null, includes, excludes, ignoreOnPushNotifications);
     }
 
     public boolean isIgnoreOnPushNotifications() {
@@ -163,6 +188,19 @@ public class GitSCMSource extends AbstractGitSCMSource {
     }
 
     @Override
+    public String getRemoteName() {
+        if (isBlank(remoteName))
+            // backwards compatibility
+            return super.getRemoteName();
+
+        return remoteName;
+    }
+
+    public String getRawRefSpecs() {
+        return rawRefSpecs;
+    }
+
+    @Override
     public String getIncludes() {
         return includes;
     }
@@ -174,7 +212,18 @@ public class GitSCMSource extends AbstractGitSCMSource {
 
     @Override
     protected List<RefSpec> getRefSpecs() {
-        return Arrays.asList(new RefSpec("+refs/heads/*:refs/remotes/" + getRemoteName() + "/*"));
+        List<RefSpec> refSpecs = new ArrayList<>();
+        String refSpecsString = rawRefSpecs;
+
+        if (isBlank(refSpecsString))
+            // backwards compatibility
+            refSpecsString = String.format("+refs/heads/*:refs/remotes/%s/*", getRemoteName());
+
+        for (String rawRefSpec : refSpecsString.split(" ")) {
+            refSpecs.add(new RefSpec(rawRefSpec));
+        }
+
+        return refSpecs;
     }
 
     @Extension
@@ -185,22 +234,63 @@ public class GitSCMSource extends AbstractGitSCMSource {
             return Messages.GitSCMSource_DisplayName();
         }
 
+        @SuppressFBWarnings(value="NP_NULL_PARAM_DEREF", justification="pending https://github.com/jenkinsci/credentials-plugin/pull/68")
         public ListBoxModel doFillCredentialsIdItems(@AncestorInPath SCMSourceOwner context,
-                                                     @QueryParameter String remote) {
-            if (context == null || !context.hasPermission(Item.CONFIGURE)) {
-                return new ListBoxModel();
+                                                     @QueryParameter String remote,
+                                                     @QueryParameter String credentialsId) {
+            if (context == null && !Jenkins.getActiveInstance().hasPermission(Jenkins.ADMINISTER) ||
+                context != null && !context.hasPermission(Item.EXTENDED_READ)) {
+                return new StandardListBoxModel().includeCurrentValue(credentialsId);
             }
-            StandardListBoxModel result = new StandardListBoxModel();
-            result.withEmptySelection();
-            result.withMatching(GitClient.CREDENTIALS_MATCHER,
-                    CredentialsProvider.lookupCredentials(
-                            StandardUsernameCredentials.class,
+            return new StandardListBoxModel()
+                    .includeEmptyValue()
+                    .includeMatchingAs(
+                            context instanceof Queue.Task ? Tasks.getAuthenticationOf((Queue.Task)context) : ACL.SYSTEM,
                             context,
-                            ACL.SYSTEM,
-                            URIRequirementBuilder.fromUri(remote).build()
-                    )
-            );
-            return result;
+                            StandardUsernameCredentials.class,
+                            URIRequirementBuilder.fromUri(remote).build(),
+                            GitClient.CREDENTIALS_MATCHER)
+                    .includeCurrentValue(credentialsId);
+        }
+
+        public FormValidation doCheckCredentialsId(@AncestorInPath SCMSourceOwner context,
+                                                   @QueryParameter String url,
+                                                   @QueryParameter String value) {
+            if (context == null && !Jenkins.getActiveInstance().hasPermission(Jenkins.ADMINISTER) ||
+                context != null && !context.hasPermission(Item.EXTENDED_READ)) {
+                return FormValidation.ok();
+            }
+
+            value = Util.fixEmptyAndTrim(value);
+            if (value == null) {
+                return FormValidation.ok();
+            }
+
+            url = Util.fixEmptyAndTrim(url);
+            if (url == null)
+            // not set, can't check
+            {
+                return FormValidation.ok();
+            }
+
+            for (ListBoxModel.Option o : CredentialsProvider.listCredentials(
+                    StandardUsernameCredentials.class,
+                    context,
+                    context instanceof Queue.Task
+                            ? Tasks.getAuthenticationOf((Queue.Task) context)
+                            : ACL.SYSTEM,
+                    URIRequirementBuilder.fromUri(url).build(),
+                    GitClient.CREDENTIALS_MATCHER)) {
+                if (StringUtils.equals(value, o.value)) {
+                    // TODO check if this type of credential is acceptable to the Git client or does it merit warning
+                    // NOTE: we would need to actually lookup the credential to do the check, which may require
+                    // fetching the actual credential instance from a remote credentials store. Perhaps this is
+                    // not required
+                    return FormValidation.ok();
+                }
+            }
+            // no credentials available, can't check
+            return FormValidation.warning("Cannot find any credentials with id " + value);
         }
 
         public GitSCM.DescriptorImpl getSCMDescriptor() {
@@ -226,11 +316,14 @@ public class GitSCMSource extends AbstractGitSCMSource {
 
     @Extension
     public static class ListenerImpl extends GitStatus.Listener {
-
         @Override
-        public List<GitStatus.ResponseContributor> onNotifyCommit(URIish uri, String sha1, List<ParameterValue> buildParameters, String... branches) {
-            List<GitStatus.ResponseContributor> result = new ArrayList<>();
-            boolean notified = false;
+        public List<GitStatus.ResponseContributor> onNotifyCommit(String origin,
+                                                                  URIish uri,
+                                                                  @Nullable final String sha1,
+                                                                  List<ParameterValue> buildParameters,
+                                                                  String... branches) {
+            List<GitStatus.ResponseContributor> result = new ArrayList<GitStatus.ResponseContributor>();
+            final boolean notified[] = {false};
             // run in high privilege to see all the projects anonymous users don't see.
             // this is safe because when we actually schedule a build, it's a build that can
             // happen at some random time anyway.
@@ -241,35 +334,107 @@ public class GitSCMSource extends AbstractGitSCMSource {
             }
             SecurityContext old = jenkins.getACL().impersonate(ACL.SYSTEM);
             try {
-                for (final SCMSourceOwner owner : SCMSourceOwners.all()) {
-                    for (SCMSource source : owner.getSCMSources()) {
-                        if (source instanceof GitSCMSource) {
-                            GitSCMSource git = (GitSCMSource) source;
-                            if (git.ignoreOnPushNotifications) {
-                              continue;
+                if (branches.length > 0) {
+                    final URIish u = uri;
+                    for (final String branch: branches) {
+                        SCMHeadEvent.fireNow(new SCMHeadEvent<String>(SCMEvent.Type.UPDATED, branch, origin){
+                            @Override
+                            public boolean isMatch(@NonNull SCMNavigator navigator) {
+                                return false;
                             }
-                            URIish remote;
-                            try {
-                                remote = new URIish(git.getRemote());
-                            } catch (URISyntaxException e) {
-                                // ignore
-                                continue;
-                            }
-                            if (GitStatus.looselyMatches(uri, remote)) {
-                                LOGGER.info("Triggering the indexing of " + owner.getFullDisplayName());
-                                owner.onSCMSourceUpdated(source);
-                                result.add(new GitStatus.ResponseContributor() {
-                                    @Override
-                                    public void addHeaders(StaplerRequest req, StaplerResponse rsp) {
-                                        rsp.addHeader("Triggered", owner.getAbsoluteUrl());
-                                    }
 
-                                    @Override
-                                    public void writeBody(PrintWriter w) {
-                                        w.println("Scheduled indexing of " + owner.getFullDisplayName());
+                            @NonNull
+                            @Override
+                            public String getSourceName() {
+                                // we will never be called here as do not match any navigator
+                                return u.getHumanishName();
+                            }
+
+                            @Override
+                            public boolean isMatch(SCMSource source) {
+                                if (source instanceof GitSCMSource) {
+                                    GitSCMSource git = (GitSCMSource) source;
+                                    if (git.ignoreOnPushNotifications) {
+                                        return false;
                                     }
-                                });
-                                notified = true;
+                                    URIish remote;
+                                    try {
+                                        remote = new URIish(git.getRemote());
+                                    } catch (URISyntaxException e) {
+                                        // ignore
+                                        return false;
+                                    }
+                                    if (GitStatus.looselyMatches(u, remote)) {
+                                        notified[0] = true;
+                                        return true;
+                                    }
+                                    return false;
+                                }
+                                return false;
+                            }
+
+                            @NonNull
+                            @Override
+                            public Map<SCMHead, SCMRevision> heads(@NonNull SCMSource source) {
+                                if (source instanceof GitSCMSource) {
+                                    GitSCMSource git = (GitSCMSource) source;
+                                    if (git.ignoreOnPushNotifications) {
+                                        return Collections.emptyMap();
+                                    }
+                                    URIish remote;
+                                    try {
+                                        remote = new URIish(git.getRemote());
+                                    } catch (URISyntaxException e) {
+                                        // ignore
+                                        return Collections.emptyMap();
+                                    }
+                                    if (GitStatus.looselyMatches(u, remote)) {
+                                        SCMHead head = new SCMHead(branch);
+                                        return Collections.<SCMHead, SCMRevision>singletonMap(head,
+                                                sha1 != null ? new SCMRevisionImpl(head, sha1) : null);
+                                    }
+                                }
+                                return Collections.emptyMap();
+                            }
+
+                            @Override
+                            public boolean isMatch(@NonNull SCM scm) {
+                                return false; // TODO rewrite the legacy event system to fire through SCM API
+                            }
+                        });
+                    }
+                } else {
+                    for (final SCMSourceOwner owner : SCMSourceOwners.all()) {
+                        for (SCMSource source : owner.getSCMSources()) {
+                            if (source instanceof GitSCMSource) {
+                                GitSCMSource git = (GitSCMSource) source;
+                                if (git.ignoreOnPushNotifications) {
+                                    continue;
+                                }
+                                URIish remote;
+                                try {
+                                    remote = new URIish(git.getRemote());
+                                } catch (URISyntaxException e) {
+                                    // ignore
+                                    continue;
+                                }
+                                if (GitStatus.looselyMatches(uri, remote)) {
+                                    LOGGER.info("Triggering the indexing of " + owner.getFullDisplayName()
+                                            + " as a result of event from " + origin);
+                                    owner.onSCMSourceUpdated(source);
+                                    result.add(new GitStatus.ResponseContributor() {
+                                        @Override
+                                        public void addHeaders(StaplerRequest req, StaplerResponse rsp) {
+                                            rsp.addHeader("Triggered", owner.getAbsoluteUrl());
+                                        }
+
+                                        @Override
+                                        public void writeBody(PrintWriter w) {
+                                            w.println("Scheduled indexing of " + owner.getFullDisplayName());
+                                        }
+                                    });
+                                    notified[0] = true;
+                                }
                             }
                         }
                     }
@@ -277,7 +442,7 @@ public class GitSCMSource extends AbstractGitSCMSource {
             } finally {
                 SecurityContextHolder.setContext(old);
             }
-            if (!notified) {
+            if (!notified[0]) {
                 result.add(new GitStatus.MessageResponseContributor("No Git consumers using SCM API plugin for: " + uri.toString()));
             }
             return result;

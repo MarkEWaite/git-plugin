@@ -1,28 +1,18 @@
 package hudson.plugins.git.browser;
 
-import hudson.EnvVars;
 import hudson.Extension;
-import hudson.model.AbstractProject;
 import hudson.model.Descriptor;
-import hudson.model.EnvironmentContributor;
-import hudson.model.ItemGroup;
-import hudson.model.Job;
-import hudson.model.TaskListener;
 import hudson.plugins.git.GitChangeSet;
 import hudson.plugins.git.GitChangeSet.Path;
 import hudson.scm.EditType;
 import hudson.scm.RepositoryBrowser;
 import net.sf.json.JSONObject;
 
-import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
 
 /**
  * Git Browser URLs
@@ -48,7 +38,7 @@ public class GithubWeb extends GitRepositoryBrowser {
      *
      * @param path affected file path
      * @return diff link
-     * @throws IOException
+     * @throws IOException on input or output error
      */
     @Override
     public URL getDiffLink(Path path) throws IOException {
@@ -62,9 +52,9 @@ public class GithubWeb extends GitRepositoryBrowser {
     /**
      * Return a diff link regardless of the edit type by appending the index of the pathname in the changeset.
      *
-     * @param path
+     * @param path file path used in diff link
      * @return url for differences
-     * @throws IOException
+     * @throws IOException on input or output error
      */
     private URL getDiffLinkRegardlessOfEditType(Path path) throws IOException {
 	// Github seems to sort the output alphabetically by the path.
@@ -79,7 +69,7 @@ public class GithubWeb extends GitRepositoryBrowser {
      *
      * @param path file
      * @return file link
-     * @throws IOException
+     * @throws IOException on input or output error
      */
     @Override
     public URL getFileLink(Path path) throws IOException {

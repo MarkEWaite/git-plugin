@@ -1,5 +1,6 @@
 package hudson.plugins.git;
 
+import com.cloudbees.plugins.credentials.CredentialsMatcher;
 import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
@@ -146,7 +147,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
     /**
      * A convenience constructor that sets everything to default.
      *
-     * @param repositoryUrl
+     * @param repositoryUrl git repository URL
      *      Repository URL to clone from.
      */
     public GitSCM(String repositoryUrl) {
@@ -154,7 +155,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
                 createRepoList(repositoryUrl, null),
                 Collections.singletonList(new BranchSpec("")),
                 false, Collections.<SubmoduleConfig>emptyList(),
-                null, null, null);
+                null, null, Collections.<GitSCMExtension>emptyList());
     }
 
 //    @Restricted(NoExternalUse.class) // because this keeps changing
@@ -166,7 +167,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
             Collection<SubmoduleConfig> submoduleCfg,
             @CheckForNull GitRepositoryBrowser browser,
             @CheckForNull String gitTool,
-            @NonNull List<GitSCMExtension> extensions) {
+            List<GitSCMExtension> extensions) {
 
         // moved from createBranches
         this.branches = isEmpty(branches) ? newArrayList(new BranchSpec("*/master")) : branches;
@@ -319,6 +320,10 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         return browser;
     }
 
+    public void setBrowser(GitRepositoryBrowser browser) {
+        this.browser = browser;
+    }
+
     private static final Pattern[] URL_PATTERNS = {
         Pattern.compile("https://github[.]com/([^/]+/[^/]+?)([.]git)*/*"),
         Pattern.compile("(?:git@)?github[.]com:([^/]+/[^/]+?)([.]git)*/*"),
@@ -378,6 +383,11 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
     /**
      * Gets the parameter-expanded effective value in the context of the current build.
+     * @param build run whose local branch name is returned
+     * @param listener build log
+     * @throws IOException on input or output error
+     * @throws InterruptedException when interrupted
+     * @return parameter-expanded local branch name in build.
      */
     public String getParamLocalBranch(Run<?, ?> build, TaskListener listener) throws IOException, InterruptedException {
         String branch = getLocalBranch();
@@ -394,6 +404,10 @@ public class GitSCM extends GitSCMBackwardCompatibility {
      * Expand parameters in {@link #remoteRepositories} with the parameter values provided in the given build
      * and return them.
      *
+     * @param build run whose local branch name is returned
+     * @param listener build log
+     * @throws IOException on input or output error
+     * @throws InterruptedException when interrupted
      * @return can be empty but never null.
      */
     public List<RemoteConfig> getParamExpandedRepos(Run<?, ?> build, TaskListener listener) throws IOException, InterruptedException {
@@ -456,9 +470,9 @@ public class GitSCM extends GitSCMBackwardCompatibility {
      * Ex. origin/master becomes master
      * <p>
      * Cycles through the list of user remotes looking for a match allowing user
-     * to configure an alternalte (not origin) name for the remote.
+     * to configure an alternate (not origin) name for the remote.
      *
-     * @param remoteBranchName
+     * @param remoteBranchName branch name whose remote repository name will be removed
      * @return a local branch name derived by stripping the remote repository
      *         name from the {@code remoteBranchName} parameter. If a matching
      *         remote is not found, the original {@code remoteBranchName} will
@@ -710,6 +724,13 @@ public class GitSCM extends GitSCMBackwardCompatibility {
     /**
      * Allows {@link Builder}s and {@link Publisher}s to access a configured {@link GitClient} object to
      * perform additional git operations.
+     * @param listener build log
+     * @param environment environment variables to be used
+     * @param build run context for the returned GitClient
+     * @param workspace client workspace
+     * @return git client for additional git operations
+     * @throws IOException on input or output error
+     * @throws InterruptedException when interrupted
      */
     public GitClient createClient(TaskListener listener, EnvVars environment, Run<?,?> build, FilePath workspace) throws IOException, InterruptedException {
         FilePath ws = workingDirectory(build.getParent(), workspace, environment, listener);
@@ -731,15 +752,14 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         }
 
         for (UserRemoteConfig uc : getUserRemoteConfigs()) {
-            if (uc.getCredentialsId() != null) {
-                String url = uc.getUrl();
-                url = getParameterString(url, environment);
-                StandardUsernameCredentials credentials = CredentialsMatchers
-                        .firstOrNull(
-                                CredentialsProvider.lookupCredentials(StandardUsernameCredentials.class, project,
-                                        ACL.SYSTEM, URIRequirementBuilder.fromUri(url).build()),
-                                CredentialsMatchers.allOf(CredentialsMatchers.withId(uc.getCredentialsId()),
-                                        GitClient.CREDENTIALS_MATCHER));
+            String ucCredentialsId = uc.getCredentialsId();
+            if (ucCredentialsId != null) {
+                String url = getParameterString(uc.getUrl(), environment);
+                List<StandardUsernameCredentials> urlCredentials = CredentialsProvider.lookupCredentials(StandardUsernameCredentials.class, project,
+                                        ACL.SYSTEM, URIRequirementBuilder.fromUri(url).build());
+                CredentialsMatcher ucMatcher = CredentialsMatchers.withId(ucCredentialsId);
+                CredentialsMatcher idMatcher = CredentialsMatchers.allOf(ucMatcher, GitClient.CREDENTIALS_MATCHER);
+                StandardUsernameCredentials credentials = CredentialsMatchers.firstOrNull(urlCredentials, idMatcher);
                 if (credentials != null) {
                     c.addCredentials(url, credentials);
                 }
@@ -757,11 +777,11 @@ public class GitSCM extends GitSCMBackwardCompatibility {
     /**
      * Fetch information from a particular remote repository.
      *
-     * @param git
-     * @param listener
-     * @param remoteRepository
-     * @throws InterruptedException
-     * @throws IOException
+     * @param git git client
+     * @param listener build log
+     * @param remoteRepository remote git repository
+     * @throws InterruptedException when interrupted
+     * @throws IOException on input or output error
      */
     private void fetchFrom(GitClient git,
             TaskListener listener,
@@ -816,7 +836,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         }
         GitTool git =  jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).getInstallation(gitTool);
         if (git == null) {
-            listener.getLogger().println("selected Git installation does not exists. Using Default");
+            listener.getLogger().println("Selected Git installation does not exist. Using Default");
             git = GitTool.getDefaultInstallation();
         }
         return git;
@@ -828,6 +848,10 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
     /**
      * Exposing so that we can get this from GitPublisher.
+     * @param builtOn node where build was performed
+     * @param env environment variables used in the build
+     * @param listener build log
+     * @return git exe for builtOn node, often "Default" or "jgit"
      */
     public String getGitExe(Node builtOn, EnvVars env, TaskListener listener) {
 
@@ -858,6 +882,8 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
     /**
      * Web-bound method to let people look up a build by their SHA1 commit.
+     * @param sha1 SHA1 hash of commit
+     * @return most recent build of sha1
      */
     public AbstractBuild<?,?> getBySHA1(String sha1) {
         AbstractProject<?,?> p = Stapler.getCurrentRequest().findAncestorObject(AbstractProject.class);
@@ -991,6 +1017,10 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         Build revToBuild = new Build(marked, rev, build.getNumber(), null);
         buildData.saveBuild(revToBuild);
 
+        if (buildData.getBuildsByBranchName().size() >= 100) {
+            log.println("JENKINS-19022: warning: possible memory leak due to Git plugin usage; see: https://wiki.jenkins-ci.org/display/JENKINS/Remove+Git+Plugin+BuildsByBranch+BuildData");
+        }
+
         if (candidates.size() > 1) {
             log.println("Multiple candidate revisions");
             Job<?, ?> job = build.getParent();
@@ -1030,7 +1060,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
             RemoteConfig rc = repos.get(0);
             try {
-                CloneCommand cmd = git.clone_().url(rc.getURIs().get(0).toPrivateString()).repositoryName(rc.getName()).refspecs(rc.getFetchRefSpecs());
+                CloneCommand cmd = git.clone_().url(rc.getURIs().get(0).toPrivateString()).repositoryName(rc.getName());
                 for (GitSCMExtension ext : extensions) {
                     ext.decorateCloneCommand(this, build, git, listener, cmd);
                 }
@@ -1368,6 +1398,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
          * Path to git executable.
          * @deprecated
          * @see GitTool
+         * @return git executable
          */
         @Deprecated
         public String getGitExe() {
@@ -1376,22 +1407,32 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
         /**
          * Global setting to be used in call to "git config user.name".
+         * @return user.name value
          */
         public String getGlobalConfigName() {
             return fixEmptyAndTrim(globalConfigName);
         }
 
+        /**
+         * Global setting to be used in call to "git config user.name".
+         * @param globalConfigName user.name value to be assigned
+         */
         public void setGlobalConfigName(String globalConfigName) {
             this.globalConfigName = globalConfigName;
         }
 
         /**
          * Global setting to be used in call to "git config user.email".
+         * @return user.email value
          */
         public String getGlobalConfigEmail() {
             return fixEmptyAndTrim(globalConfigEmail);
         }
 
+        /**
+         * Global setting to be used in call to "git config user.email".
+         * @param globalConfigEmail user.email value to be assigned
+         */
         public void setGlobalConfigEmail(String globalConfigEmail) {
             this.globalConfigEmail = globalConfigEmail;
         }
@@ -1407,6 +1448,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         /**
          * Old configuration of git executable - exposed so that we can
          * migrate this setting to GitTool without deprecation warnings.
+         * @return git executable
          */
         public String getOldGitExe() {
             return gitExe;
@@ -1506,6 +1548,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
         /**
          * Fill in the environment variables for launching git
+         * @param env base environment variables
          */
         public void populateEnvironmentVariables(Map<String,String> env) {
             String name = getGlobalConfigName();
@@ -1555,7 +1598,9 @@ public class GitSCM extends GitSCMBackwardCompatibility {
     }
 
     /**
-     * Use {@link PreBuildMerge}.
+     * @deprecated Use {@link PreBuildMerge}.
+     * @return pre-build merge options
+     * @throws FormException on form error
      */
     @Exported
     @Deprecated
@@ -1574,6 +1619,9 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
     /**
      * @deprecated
+     * @param build run whose build data is returned
+     * @param clone true if returned build data should be copied rather than referenced
+     * @return build data for build run
      */
     public BuildData getBuildData(Run build, boolean clone) {
         return clone ? copyBuildData(build) : getBuildData(build);
@@ -1582,6 +1630,8 @@ public class GitSCM extends GitSCMBackwardCompatibility {
     /**
      * Like {@link #getBuildData(Run)}, but copy the data into a new object,
      * which is used as the first step for updating the data for the next build.
+     * @param build run whose BuildData is returned
+     * @return copy of build data for build
      */
     public BuildData copyBuildData(Run build) {
         BuildData base = getBuildData(build);
@@ -1598,7 +1648,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
      * Find the build log (BuildData) recorded with the last build that completed. BuildData
      * may not be recorded if an exception occurs in the plugin logic.
      *
-     * @param build
+     * @param build run whose build data is returned
      * @return the last recorded build data
      */
     public @CheckForNull BuildData getBuildData(Run build) {
@@ -1624,8 +1674,13 @@ public class GitSCM extends GitSCMBackwardCompatibility {
      * Given the workspace, gets the working directory, which will be the workspace
      * if no relative target dir is specified. Otherwise, it'll be "workspace/relativeTargetDir".
      *
-     * @param workspace
+     * @param context job context for working directory
+     * @param workspace initial FilePath of job workspace
+     * @param environment environment variables used in job context
+     * @param listener build log
      * @return working directory or null if workspace is null
+     * @throws IOException on input or output error
+     * @throws InterruptedException when interrupted
      */
     protected FilePath workingDirectory(Job<?,?> context, FilePath workspace, EnvVars environment, TaskListener listener) throws IOException, InterruptedException {
         // JENKINS-10880: workspace can be null
@@ -1645,7 +1700,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
      *
      * @param git GitClient object
      * @param r Revision object
-     * @param listener
+     * @param listener build log
      * @return true if any exclusion files are matched, false otherwise.
      */
     private boolean isRevExcluded(GitClient git, Revision r, TaskListener listener, BuildData buildData) throws IOException, InterruptedException {

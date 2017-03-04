@@ -1,5 +1,6 @@
 package hudson.plugins.git;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.Extension;
@@ -22,6 +23,7 @@ import javax.servlet.http.HttpServletRequest;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 import jenkins.model.Jenkins;
+import jenkins.scm.api.SCMEvent;
 import jenkins.triggers.SCMTriggerItem;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
@@ -65,6 +67,10 @@ public class GitStatus extends AbstractModelObject implements UnprotectedRootAct
     private String lastSHA1 = null;     // Optional query parameter
     private List<ParameterValue> lastBuildParameters = null;
     private static List<ParameterValue> lastStaticBuildParameters = null;
+
+    private static void clearLastStaticBuildParameters() {
+        lastStaticBuildParameters = null;
+    }
 
     @Override
     public String toString() {
@@ -115,7 +121,7 @@ public class GitStatus extends AbstractModelObject implements UnprotectedRootAct
         lastBranches = branches;
         lastSHA1 = sha1;
         lastBuildParameters = null;
-        lastStaticBuildParameters = null;
+        GitStatus.clearLastStaticBuildParameters();
         URIish uri;
         List<ParameterValue> buildParameters = new ArrayList<>();
 
@@ -150,8 +156,9 @@ public class GitStatus extends AbstractModelObject implements UnprotectedRootAct
             LOGGER.warning("Jenkins instance is not ready. Cannot process notifications");
             return HttpResponses.error(404, "Jenkins instance is not ready");
         }
+        String origin = SCMEvent.originOf(request);
         for (Listener listener : jenkins.getExtensionList(Listener.class)) {
-            contributors.addAll(listener.onNotifyCommit(uri, sha1, buildParameters, branchesArray));
+            contributors.addAll(listener.onNotifyCommit(origin, uri, sha1, buildParameters, branchesArray));
         }
 
         return new HttpResponseImpl(contributors);
@@ -161,6 +168,9 @@ public class GitStatus extends AbstractModelObject implements UnprotectedRootAct
      * Used to test if what we have in the job configuration matches what was submitted to the notification endpoint.
      * It is better to match loosely and wastes a few polling calls than to be pedantic and miss the push notification,
      * especially given that Git tends to support multiple access protocols.
+     * @param lhs left-hand side of comparison
+     * @param rhs right-hand side of comparison
+     * @return true if left-hand side loosely matches right-hand side
      */
     public static boolean looselyMatches(URIish lhs, URIish rhs) {
         return StringUtils.equals(lhs.getHost(),rhs.getHost())
@@ -221,6 +231,9 @@ public class GitStatus extends AbstractModelObject implements UnprotectedRootAct
 
         /**
          * @deprecated implement {@link #onNotifyCommit(org.eclipse.jgit.transport.URIish, String, List, String...)}
+         * @param uri             the repository uri.
+         * @param branches        the (optional) branch information.
+         * @return any response contributors for the response to the push request.
          */
         public List<ResponseContributor> onNotifyCommit(URIish uri, String[] branches) {
             throw new AbstractMethodError();
@@ -228,6 +241,10 @@ public class GitStatus extends AbstractModelObject implements UnprotectedRootAct
 
         /**
          * @deprecated implement {@link #onNotifyCommit(org.eclipse.jgit.transport.URIish, String, List, String...)}
+         * @param uri             the repository uri.
+         * @param sha1            SHA1 hash of commit to build
+         * @param branches        the (optional) branch information.
+         * @return any response contributors for the response to the push request.
          */
         public List<ResponseContributor> onNotifyCommit(URIish uri, @Nullable String sha1, String... branches) {
             return onNotifyCommit(uri, branches);
@@ -237,14 +254,42 @@ public class GitStatus extends AbstractModelObject implements UnprotectedRootAct
          * Called when there is a change notification on a specific repository url.
          *
          * @param uri             the repository uri.
-         * @param sha1            ?
-         * @param buildParameters ?
+         * @param sha1            SHA1 hash of commit to build
+         * @param buildParameters parameters to be passed to the build.
+         *                        Ignored unless build parameter flag is set
+         *                        due to security risk of accepting parameters from
+         *                        unauthenticated sources
          * @param branches        the (optional) branch information.
          * @return any response contributors for the response to the push request.
          * @since 2.4.0
+         * @deprecated use {@link #onNotifyCommit(String, URIish, String, List, String...)}
          */
+        @Deprecated
         public List<ResponseContributor> onNotifyCommit(URIish uri, @Nullable String sha1, List<ParameterValue> buildParameters, String... branches) {
             return onNotifyCommit(uri, sha1, branches);
+        }
+
+        /**
+         * Called when there is a change notification on a specific repository url.
+         *
+         * @param origin          the origin of the notification (use {@link SCMEvent#originOf(HttpServletRequest)} if in
+         *                        doubt) or {@code null} if the origin is unknown.
+         * @param uri             the repository uri.
+         * @param sha1            SHA1 hash of commit to build
+         * @param buildParameters parameters to be passed to the build.
+         *                        Ignored unless build parameter flag is set
+         *                        due to security risk of accepting parameters from
+         *                        unauthenticated sources
+         * @param branches        the (optional) branch information.
+         * @return any response contributors for the response to the push request.
+         * @since 2.6.5
+         */
+        public List<ResponseContributor> onNotifyCommit(@CheckForNull String origin,
+                                                        URIish uri,
+                                                        @Nullable String sha1,
+                                                        List<ParameterValue> buildParameters,
+                                                        String... branches) {
+            return onNotifyCommit(uri, sha1, buildParameters, branches);
         }
 
 
@@ -263,12 +308,13 @@ public class GitStatus extends AbstractModelObject implements UnprotectedRootAct
          * {@inheritDoc}
          */
         @Override
-        public List<ResponseContributor> onNotifyCommit(URIish uri, String sha1, List<ParameterValue> buildParameters, String... branches) {
+        public List<ResponseContributor> onNotifyCommit(String origin, URIish uri, String sha1, List<ParameterValue> buildParameters, String... branches) {
             if (LOGGER.isLoggable(Level.FINE)) {
-                LOGGER.fine("Received notification for uri = " + uri + " ; sha1 = " + sha1 + " ; branches = " + Arrays.toString(branches));
+                LOGGER.fine("Received notification from " + StringUtils.defaultIfBlank(origin, "?")
+                        + " for uri = " + uri + " ; sha1 = " + sha1 + " ; branches = " + Arrays.toString(branches));
             }
 
-            lastStaticBuildParameters = null;
+            GitStatus.clearLastStaticBuildParameters();
             List<ParameterValue> allBuildParameters = new ArrayList<>(buildParameters);
             List<ResponseContributor> result = new ArrayList<>();
             final Jenkins jenkins = Jenkins.getInstance();

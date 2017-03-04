@@ -26,7 +26,11 @@ package jenkins.plugins.git;
 
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.util.NameValuePair;
-import org.jenkinsci.plugins.workflow.steps.scm.AbstractSampleDVCSRepoRule;
+import java.io.File;
+import java.io.IOException;
+import jenkins.scm.impl.mock.AbstractSampleDVCSRepoRule;
+import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.jvnet.hudson.test.JenkinsRule;
 
 /**
@@ -44,7 +48,13 @@ public final class GitSampleRepoRule extends AbstractSampleDVCSRepoRule {
         git("init");
         write("file", "");
         git("add", "file");
+        git("config", "user.name", "Git SampleRepoRule");
+        git("config", "user.email", "gits@mplereporule");
         git("commit", "--message=init");
+    }
+
+    public final boolean mkdirs(String rel) throws IOException {
+        return new File(this.sampleRepo, rel).mkdirs();
     }
 
     public void notifyCommit(JenkinsRule r) throws Exception {
@@ -57,6 +67,11 @@ public final class GitSampleRepoRule extends AbstractSampleDVCSRepoRule {
             }
         }
         r.waitUntilNoActivity();
+    }
+
+    /** Returns the (full) commit hash of the current {@link Constants#HEAD} of the repository. */
+    public String head() throws Exception {
+        return new RepositoryBuilder().setWorkTree(sampleRepo).build().resolve(Constants.HEAD).name();
     }
 
 }

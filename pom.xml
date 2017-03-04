@@ -3,7 +3,8 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>2.10</version>
+    <version>2.23</version>
+    <relativePath />
   </parent>
 
   <licenses>
@@ -15,20 +16,23 @@
   </licenses>
 
   <artifactId>git</artifactId>
-  <version>3.0.0-beta2-SNAPSHOT</version>
+  <version>3.1.0-SNAPSHOT</version>
   <packaging>hpi</packaging>
   <name>Jenkins Git plugin</name>
   <description>Integrates Jenkins with GIT SCM</description>
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Git+Plugin</url>
+  <inceptionYear>2007</inceptionYear>
 
   <properties>
-    <jenkins.version>1.625</jenkins.version>
+    <jacoco-maven-plugin.version>0.7.7.201606060606</jacoco-maven-plugin.version>
+    <jenkins.version>1.625.3</jenkins.version>
     <java.level>7</java.level>
-    <!-- Use the same configuration than before. -->
-    <concurrency>2</concurrency>
+    <no-test-jar>false</no-test-jar>
+    <concurrency>1C</concurrency>
     <!-- TODO: Ongoing work on https://github.com/MarkEWaite/git-plugin/tree/master-findbugs-fixes. -->
     <findbugs.failOnError>false</findbugs.failOnError>
     <workflow.version>1.14.2</workflow.version>
+    <scm-api-plugin.version>2.0.8</scm-api-plugin.version>
   </properties>
 
   <build>
@@ -56,6 +60,29 @@
     </pluginManagement>
     <plugins>
       <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+      </plugin>
+      <plugin>
         <groupId>com.infradna.tool</groupId>
         <artifactId>bridge-method-injector</artifactId>
         <version>1.14</version>
@@ -71,17 +98,6 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>findbugs-maven-plugin</artifactId>
         <version>3.0.3</version>
-      </plugin>
-      <plugin>
-        <artifactId>maven-jar-plugin</artifactId>
-        <executions>
-          <execution>
-            <goals>
-              <!-- TODO check if http://stackoverflow.com/q/1771561/12916 lets us add the test-jar goal to attach-sources/attach-javadocs executions from the inherited jenkins-release profile -->
-              <goal>test-jar</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>
@@ -110,7 +126,7 @@
     <dependency>
       <groupId>joda-time</groupId>
       <artifactId>joda-time</artifactId>
-      <version>2.9.4</version>
+      <version>2.9.5</version>
     </dependency>
     <dependency>
       <groupId>com.infradna.tool</groupId>
@@ -121,12 +137,12 @@
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>git-client</artifactId>
-      <version>2.0.0-beta1</version>
+      <version>2.3.0</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>credentials</artifactId>
-      <version>2.0</version>
+      <version>2.1.8</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
@@ -136,7 +152,7 @@
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>scm-api</artifactId>
-      <version>1.2</version>
+      <version>${scm-api-plugin.version}</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
@@ -146,14 +162,26 @@
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>matrix-project</artifactId>
-      <version>1.7</version>
+      <version>1.7.1</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>mailer</artifactId>
-      <version>1.17</version>
+      <version>1.18</version>
     </dependency>
 
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>junit</artifactId>
+      <version>1.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>script-security</artifactId>
+      <version>1.16</version>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
@@ -163,6 +191,18 @@
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
       <version>1.10.19</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-module-junit4</artifactId>
+      <version>1.6.6</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-api-mockito</artifactId>
+      <version>1.6.6</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -188,7 +228,7 @@
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>token-macro</artifactId>
-      <version>1.11</version>
+      <version>1.12.1</version> <!-- Depends on Jenkins 1.609 -->
       <optional>true</optional>
     </dependency>
     <dependency>
@@ -217,10 +257,34 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-aggregator</artifactId>
-      <version>${workflow.version}</version>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>scm-api</artifactId>
+      <version>${scm-api-plugin.version}</version>
       <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-cps</artifactId>
+      <version>${workflow.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-job</artifactId>
+      <version>${workflow.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-basic-steps</artifactId>
+      <version>${workflow.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-durable-task-step</artifactId>
+      <version>${workflow.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -239,4 +303,3 @@
      </pluginRepository>
   </pluginRepositories>
 </project>
-

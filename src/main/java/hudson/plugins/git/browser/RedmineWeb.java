@@ -46,7 +46,7 @@ public class RedmineWeb extends GitRepositoryBrowser {
      * @param path
      *            affected file path
      * @return diff link
-     * @throws IOException
+     * @throws IOException on input or output error
      */
     @Override
     public URL getDiffLink(Path path) throws IOException {
@@ -67,10 +67,9 @@ public class RedmineWeb extends GitRepositoryBrowser {
      * https://SERVER/PATH/projects/PROJECT/repository/revisions/a9182a07750c9a0dfd89a8461adf72ef5ef0885b/entry/pom.xml
      * For deleted files just returns a diff link, which will have /dev/null as target file.
      * 
-     * @param path
-     *            file
+     * @param path affected file path
      * @return file link
-     * @throws IOException
+     * @throws IOException on input or output error
      */
     @Override
     public URL getFileLink(Path path) throws IOException {
