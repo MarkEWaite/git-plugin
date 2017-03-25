@@ -29,6 +29,8 @@ import hudson.remoting.Channel;
 import hudson.remoting.VirtualChannel;
 import hudson.scm.ChangeLogSet;
 import hudson.scm.PollingResult;
+import hudson.scm.PollingResult.Change;
+import hudson.scm.SCMRevisionState;
 import hudson.slaves.DumbSlave;
 import hudson.slaves.EnvironmentVariablesNodeProperty.Entry;
 import hudson.tools.ToolProperty;
@@ -46,6 +48,7 @@ import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.jenkinsci.plugins.gitclient.*;
+import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.TestExtension;
 
@@ -55,30 +58,29 @@ import java.io.InputStream;
 import java.io.ObjectStreamException;
 import java.io.Serializable;
 import java.net.URL;
+import java.text.MessageFormat;
 import java.util.*;
 import org.eclipse.jgit.transport.RemoteConfig;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import org.jvnet.hudson.test.Issue;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import org.mockito.Mockito;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+
+import jenkins.plugins.git.GitSampleRepoRule;
 
 /**
  * Tests for {@link GitSCM}.
  * @author ishaaq
  */
 public class GitSCMTest extends AbstractGitTestCase {
-    
+    @Rule
+    public GitSampleRepoRule secondRepo = new GitSampleRepoRule();
+
     /**
      * Basic test - create a GitSCM based project, check it out and build for the first time.
      * Next test that polling works correctly, make another commit, check that polling finds it,
@@ -841,7 +843,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Issue("JENKINS-10060")
     @Test
     public void testSubmoduleFixup() throws Exception {
-        File repo = tempFolder.newFolder();
+        File repo = secondRepo.getRoot();
         FilePath moduleWs = new FilePath(repo);
         org.jenkinsci.plugins.gitclient.GitClient moduleRepo = Git.with(listener, new EnvVars()).in(repo).getClient();
 
@@ -971,12 +973,12 @@ public class GitSCMTest extends AbstractGitTestCase {
         rule.assertBuildStatusSuccess(build);
     }
 
-    // Temporarily disabled - unreliable and failures not helpful
+    // Disabled - consistently fails, needs more analysis
     // @Test
-    public void xtestFetchFromMultipleRepositories() throws Exception {
+    public void testFetchFromMultipleRepositories() throws Exception {
         FreeStyleProject project = setupSimpleProject("master");
 
-        TestGitRepo secondTestRepo = new TestGitRepo("second", tempFolder.newFolder(), listener);
+        TestGitRepo secondTestRepo = new TestGitRepo("second", secondRepo.getRoot(), listener);
         List<UserRemoteConfig> remotes = new ArrayList<>();
         remotes.addAll(testRepo.remoteConfigs());
         remotes.addAll(secondTestRepo.remoteConfigs());
@@ -993,7 +995,12 @@ public class GitSCMTest extends AbstractGitTestCase {
         commit(commitFile1, johnDoe, "Commit number 1");
         build(project, Result.SUCCESS, commitFile1);
 
-        assertFalse("scm polling should not detect any more changes after build", project.poll(listener).hasChanges());
+        /* Diagnostic help - for later use */
+        SCMRevisionState baseline = project.poll(listener).baseline;
+        Change change = project.poll(listener).change;
+        SCMRevisionState remote = project.poll(listener).remote;
+        String assertionMessage = MessageFormat.format("polling incorrectly detected change after build. Baseline: {0}, Change: {1}, Remote: {2}", baseline, change, remote);
+        assertFalse(assertionMessage, project.poll(listener).hasChanges());
 
         final String commitFile2 = "commitFile2";
         secondTestRepo.commit(commitFile2, janeDoe, "Commit number 2");
@@ -1008,7 +1015,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     private void branchSpecWithMultipleRepositories(String branchName) throws Exception {
         FreeStyleProject project = setupSimpleProject("master");
 
-        TestGitRepo secondTestRepo = new TestGitRepo("second", tempFolder.newFolder(), listener);
+        TestGitRepo secondTestRepo = new TestGitRepo("second", secondRepo.getRoot(), listener);
         List<UserRemoteConfig> remotes = new ArrayList<UserRemoteConfig>();
         remotes.addAll(testRepo.remoteConfigs());
         remotes.addAll(secondTestRepo.remoteConfigs());
@@ -1043,7 +1050,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     public void testCommitDetectedOnlyOnceInMultipleRepositories() throws Exception {
         FreeStyleProject project = setupSimpleProject("master");
 
-        TestGitRepo secondTestRepo = new TestGitRepo("secondRepo", tempFolder.newFolder(), listener);
+        TestGitRepo secondTestRepo = new TestGitRepo("secondRepo", secondRepo.getRoot(), listener);
         List<UserRemoteConfig> remotes = new ArrayList<>();
         remotes.addAll(testRepo.remoteConfigs());
         remotes.addAll(secondTestRepo.remoteConfigs());
@@ -1582,7 +1589,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testInitSparseCheckout() throws Exception {
-        if (!gitVersionAtLeast(1, 7, 10)) {
+        if (!sampleRepo.gitVersionAtLeast(1, 7, 10)) {
             /* Older git versions have unexpected behaviors with sparse checkout */
             return;
         }
@@ -1603,7 +1610,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testInitSparseCheckoutBis() throws Exception {
-        if (!gitVersionAtLeast(1, 7, 10)) {
+        if (!sampleRepo.gitVersionAtLeast(1, 7, 10)) {
             /* Older git versions have unexpected behaviors with sparse checkout */
             return;
         }
@@ -1624,7 +1631,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testSparseCheckoutAfterNormalCheckout() throws Exception {
-        if (!gitVersionAtLeast(1, 7, 10)) {
+        if (!sampleRepo.gitVersionAtLeast(1, 7, 10)) {
             /* Older git versions have unexpected behaviors with sparse checkout */
             return;
         }
@@ -1653,7 +1660,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testNormalCheckoutAfterSparseCheckout() throws Exception {
-        if (!gitVersionAtLeast(1, 7, 10)) {
+        if (!sampleRepo.gitVersionAtLeast(1, 7, 10)) {
             /* Older git versions have unexpected behaviors with sparse checkout */
             return;
         }
@@ -1683,7 +1690,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testInitSparseCheckoutOverSlave() throws Exception {
-        if (!gitVersionAtLeast(1, 7, 10)) {
+        if (!sampleRepo.gitVersionAtLeast(1, 7, 10)) {
             /* Older git versions have unexpected behaviors with sparse checkout */
             return;
         }
@@ -1847,24 +1854,6 @@ public class GitSCMTest extends AbstractGitTestCase {
         }
     }
 
-    private boolean gitVersionAtLeast(int neededMajor, int neededMinor) throws IOException, InterruptedException {
-        return gitVersionAtLeast(neededMajor, neededMinor, 0);
-    }
-
-    private boolean gitVersionAtLeast(int neededMajor, int neededMinor, int neededPatch) throws IOException, InterruptedException {
-        final TaskListener procListener = StreamTaskListener.fromStderr();
-        final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        final int returnCode = new Launcher.LocalLauncher(procListener).launch().cmds("git", "--version").stdout(out).join();
-        assertEquals("git --version non-zero return code", 0, returnCode);
-        assertFalse("Process listener logged an error", procListener.getLogger().checkError());
-        final String versionOutput = out.toString().trim();
-        final String[] fields = versionOutput.split(" ")[2].replaceAll("msysgit.", "").split("\\.");
-        final int gitMajor = Integer.parseInt(fields[0]);
-        final int gitMinor = Integer.parseInt(fields[1]);
-        final int gitPatch = Integer.parseInt(fields[2]);
-        return gitMajor >= neededMajor && gitMinor >= neededMinor && gitPatch >= neededPatch;
-    }
-
     @Test
 	public void testPolling_CanDoRemotePollingIfOneBranchButMultipleRepositories() throws Exception {
 		FreeStyleProject project = createFreeStyleProject();
@@ -1906,7 +1895,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         // Inital commit and build
         commit("toto/commitFile1", johnDoe, "Commit number 1");
         String brokenPath = "\\broken/path\\of/doom";
-        if (!gitVersionAtLeast(1, 8)) {
+        if (!sampleRepo.gitVersionAtLeast(1, 8)) {
             /* Git 1.7.10.4 fails the first build unless the git-upload-pack
              * program is available in its PATH.
              * Later versions of git don't have that problem.
