@@ -9,6 +9,8 @@ import com.google.common.collect.Iterables;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import hudson.*;
 import hudson.init.Initializer;
 import hudson.matrix.MatrixBuild;
@@ -827,6 +829,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         }
     }
 
+    @SuppressFBWarnings(value="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification="Jenkins.getInstance() is not null")
     public GitTool resolveGitTool(TaskListener listener) {
         if (gitTool == null) return GitTool.getDefaultInstallation();
         Jenkins jenkins = Jenkins.getInstance();
@@ -1382,6 +1385,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
             return GitSCMExtensionDescriptor.all();
         }
 
+        @SuppressFBWarnings(value="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification="Jenkins.getInstance() is not null")
         public boolean showGitToolOptions() {
             Jenkins jenkins = Jenkins.getInstance();
             if (jenkins == null) {
@@ -1395,8 +1399,9 @@ public class GitSCM extends GitSCMBackwardCompatibility {
          * Lists available toolinstallations.
          * @return  list of available git tools
          */
+        @SuppressFBWarnings(value="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification="Jenkins.getInstance() is not null")
         public List<GitTool> getGitTools() {
-            GitTool[] gitToolInstallations = Hudson.getInstance().getDescriptorByType(GitTool.DescriptorImpl.class).getInstallations();
+            GitTool[] gitToolInstallations = Jenkins.getInstance().getDescriptorByType(GitTool.DescriptorImpl.class).getInstallations();
             return Arrays.asList(gitToolInstallations);
         }
 
@@ -1794,6 +1799,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
      * Set to true to enable more logging to build's {@link TaskListener}.
      * Used by various classes in this package.
      */
+    @SuppressFBWarnings(value="MS_SHOULD_BE_FINAL", justification="Not final so users can adjust log verbosity")
     public static boolean VERBOSE = Boolean.getBoolean(GitSCM.class.getName() + ".verbose");
 
     /**

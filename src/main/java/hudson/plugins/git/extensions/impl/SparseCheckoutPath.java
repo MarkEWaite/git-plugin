@@ -2,9 +2,11 @@ package hudson.plugins.git.extensions.impl;
 
 import com.google.common.base.Function;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
+import jenkins.model.Jenkins;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.Serializable;
@@ -55,12 +57,10 @@ public class SparseCheckoutPath extends AbstractDescribableImpl<SparseCheckoutPa
         }
     }
 
-    public Descriptor<SparseCheckoutPath> getDescriptor() {
-        final Jenkins jenkins = Jenkins.getInstance();
-        if (jenkins == null) {
-            throw new IllegalStateException("Jenkins instance is not ready");
-        }
-        return jenkins.getDescriptor(getClass());
+    @SuppressFBWarnings(value="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification="Jenkins.getInstance() is not null")
+    public Descriptor<SparseCheckoutPath> getDescriptor()
+    {
+        return Jenkins.getInstance().getDescriptor(getClass());
     }
 
     @Extension

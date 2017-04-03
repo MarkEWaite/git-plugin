@@ -87,7 +87,6 @@ public class UserRemoteConfig extends AbstractDescribableImpl<UserRemoteConfig> 
     @Extension
     public static class DescriptorImpl extends Descriptor<UserRemoteConfig> {
 
-        @SuppressFBWarnings(value="NP_NULL_PARAM_DEREF", justification="pending https://github.com/jenkinsci/credentials-plugin/pull/68")
         public ListBoxModel doFillCredentialsIdItems(@AncestorInPath Item project,
                                                      @QueryParameter String url,
                                                      @QueryParameter String credentialsId) {
@@ -155,6 +154,7 @@ public class UserRemoteConfig extends AbstractDescribableImpl<UserRemoteConfig> 
             return FormValidation.warning("Cannot find any credentials with id " + value);
         }
 
+        @SuppressFBWarnings(value="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification="Jenkins.getInstance() is not null")
         public FormValidation doCheckUrl(@AncestorInPath Item item,
                                          @QueryParameter String credentialsId,
                                          @QueryParameter String value) throws IOException, InterruptedException {
