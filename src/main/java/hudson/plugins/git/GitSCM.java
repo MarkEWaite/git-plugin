@@ -763,6 +763,9 @@ public class GitSCM extends GitSCMBackwardCompatibility {
                 StandardUsernameCredentials credentials = CredentialsMatchers.firstOrNull(urlCredentials, idMatcher);
                 if (credentials != null) {
                     c.addCredentials(url, credentials);
+                    if (project != null && project.getLastBuild() != null) {
+                        CredentialsProvider.track(project.getLastBuild(), credentials);
+                    }
                 }
             }
         }
@@ -1131,10 +1134,10 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         }
 
         environment.put(GIT_COMMIT, revToBuild.revision.getSha1String());
-        Branch branch = Iterables.getFirst(revToBuild.revision.getBranches(),null);
+        Branch localBranch = Iterables.getFirst(revToBuild.revision.getBranches(),null);
         String localBranchName = getParamLocalBranch(build, listener);
-        if (branch != null && branch.getName() != null) { // null for a detached HEAD
-            String remoteBranchName = getBranchName(branch);
+        if (localBranch != null && localBranch.getName() != null) { // null for a detached HEAD
+            String remoteBranchName = getBranchName(localBranch);
             environment.put(GIT_BRANCH, remoteBranchName);
 
             LocalBranch lb = getExtensions().get(LocalBranch.class);
