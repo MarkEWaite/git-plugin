@@ -36,6 +36,8 @@ import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.DateTimeFormatterBuilder;
 import org.joda.time.format.ISODateTimeFormat;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 /**
  * Represents a change set.
  * @author Nigel Magnay
@@ -420,12 +422,16 @@ public class GitChangeSet extends ChangeLogSet.Entry {
         }
     }
 
+    @SuppressFBWarnings(value="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE", justification="jenkins.getInstance non-null in 2.46.1 and later")
     private boolean isCreateAccountBasedOnEmail() {
         Jenkins jenkins = Jenkins.getInstance();
         if (jenkins == null) {
             return false;
         }
         DescriptorImpl descriptor = (DescriptorImpl) jenkins.getDescriptor(GitSCM.class);
+        if (descriptor == null) {
+            return false;
+        }
 
         return descriptor.isCreateAccountBasedOnEmail();
     }
