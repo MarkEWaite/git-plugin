@@ -42,6 +42,7 @@ import hudson.plugins.git.Branch;
 import hudson.plugins.git.BranchSpec;
 import hudson.plugins.git.GitException;
 import hudson.plugins.git.GitSCM;
+import hudson.plugins.git.Cache;
 import hudson.plugins.git.GitTool;
 import hudson.plugins.git.Revision;
 import hudson.plugins.git.SubmoduleConfig;
@@ -112,11 +113,6 @@ import org.jenkinsci.plugins.gitclient.RepositoryCallback;
  * @author Stephen Connolly
  */
 public abstract class AbstractGitSCMSource extends SCMSource {
-
-    /**
-     * Keep one lock per cache directory. Lazy populated, but never purge, except on restart.
-     */
-    private static final ConcurrentMap<String, Lock> cacheLocks = new ConcurrentHashMap<>();
 
     private static final Logger LOGGER = Logger.getLogger(AbstractGitSCMSource.class.getName());
 
@@ -191,11 +187,9 @@ public abstract class AbstractGitSCMSource extends SCMSource {
     @NonNull
     private <T> T doRetrieve(Retriever<T> retriever, @NonNull TaskListener listener, boolean prune)
             throws IOException, InterruptedException {
-        String cacheEntry = getCacheEntry();
-        Lock cacheLock = getCacheLock(cacheEntry);
-        cacheLock.lock();
+        Cache.lock(getRemote());
         try {
-            File cacheDir = getCacheDir(cacheEntry);
+            File cacheDir = Cache.getCacheDir(getRemote());
             Git git = Git.with(listener, new EnvVars(EnvVars.masterEnvVars)).in(cacheDir);
             GitTool tool = resolveGitTool();
             if (tool != null) {
@@ -224,7 +218,7 @@ public abstract class AbstractGitSCMSource extends SCMSource {
             fetch.from(remoteURI, getRefSpecs()).execute();
             return retriever.run(client, remoteName);
         } finally {
-            cacheLock.unlock();
+            Cache.unlock(getRemote());
         }
     }
 
@@ -465,34 +459,6 @@ public abstract class AbstractGitSCMSource extends SCMSource {
         return Collections.emptyList();
     }
 
-    protected String getCacheEntry() {
-        return getCacheEntry(getRemote());
-    }
-
-    protected static File getCacheDir(String cacheEntry) {
-        Jenkins jenkins = Jenkins.getInstance();
-        if (jenkins == null) {
-            LOGGER.severe("Jenkins instance is null in AbstractGitSCMSource.getCacheDir");
-            return null;
-        }
-        File cacheDir = new File(new File(jenkins.getRootDir(), "caches"), cacheEntry);
-        if (!cacheDir.isDirectory()) {
-            boolean ok = cacheDir.mkdirs();
-            if (!ok) {
-                LOGGER.log(Level.WARNING, "Failed mkdirs of {0}", cacheDir);
-            }
-        }
-        return cacheDir;
-    }
-
-    protected static Lock getCacheLock(String cacheEntry) {
-        Lock cacheLock;
-        while (null == (cacheLock = cacheLocks.get(cacheEntry))) {
-            cacheLocks.putIfAbsent(cacheEntry, new ReentrantLock());
-        }
-        return cacheLock;
-    }
-
     @CheckForNull
     protected StandardUsernameCredentials getCredentials() {
         String credentialsId = getCredentialsId();
@@ -567,10 +533,6 @@ public abstract class AbstractGitSCMSource extends SCMSource {
         quotedBranches.append(quotedBranch);
       }
       return quotedBranches.toString();
-    }
-
-    /*package*/ static String getCacheEntry(String remote) {
-        return "git-" + Util.getDigestOf(remote);
     }
 
     /**
