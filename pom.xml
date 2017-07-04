@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>2.30</version>
+    <version>2.32</version>
     <relativePath />
   </parent>
 
@@ -87,6 +87,7 @@
       </plugin>
       <plugin>
         <artifactId>maven-enforcer-plugin</artifactId>
+        <version>1.4.2.jenkins-1</version>
         <executions>
           <execution>
             <id>display-info</id>
@@ -102,6 +103,20 @@
             </configuration>
           </execution>
         </executions>
+        <configuration>
+          <rules>
+            <requireUpperBoundDeps>
+              <excludes combine.children="append">
+                <!-- promoted-builds requests 1.9.2, core requests 1.8.4 -->
+                <exclude>org.apache.ant:ant</exclude>
+                <!-- structs requests 1.9, core requests 1.7 -->
+                <exclude>org.jenkins-ci:annotation-indexer</exclude>
+                <!-- mockito requests 2.1, powermock requests 2.4 -->
+                <exclude>org.objenesis:objenesis</exclude>
+              </excludes>
+            </requireUpperBoundDeps>
+          </rules>
+        </configuration>
       </plugin>
     </plugins>
   </build>
