@@ -314,6 +314,7 @@ public class GitSCMFileSystem extends SCMFileSystem {
             }
             TaskListener listener = new LogTaskListener(LOGGER, Level.FINE);
             AbstractGitSCMSource gitSCMSource = (AbstractGitSCMSource) source;
+            GitSCMBuilder<?> builder = gitSCMSource.newBuilder(head, rev);
             Cache.lock(gitSCMSource.getRemote());
             try {
                 File cacheDir = Cache.getCacheDir(gitSCMSource.getRemote());

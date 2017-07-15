@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 public class Cache {
 
@@ -82,6 +83,7 @@ public class Cache {
         }
     }
 
+    @SuppressFBWarnings(value="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification="Jenkins.getInstance() is not null")
     public static void unlock(String remoteURL) {
         Jenkins jenkins = Jenkins.getInstance();
         if (jenkins != null) {
