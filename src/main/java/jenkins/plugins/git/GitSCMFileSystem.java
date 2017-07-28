@@ -39,6 +39,7 @@ import hudson.model.TaskListener;
 import hudson.plugins.git.BranchSpec;
 import hudson.plugins.git.GitException;
 import hudson.plugins.git.GitSCM;
+import hudson.plugins.git.Cache;
 import hudson.plugins.git.GitTool;
 import hudson.plugins.git.UserRemoteConfig;
 import hudson.remoting.VirtualChannel;
@@ -86,7 +87,6 @@ public class GitSCMFileSystem extends SCMFileSystem {
      */
     private static final Logger LOGGER = Logger.getLogger(GitSCMFileSystem.class.getName());
 
-    private final String cacheEntry;
     private final TaskListener listener;
     private final String remote;
     private final String head;
@@ -108,7 +108,6 @@ public class GitSCMFileSystem extends SCMFileSystem {
         super(rev);
         this.remote = remote;
         this.head = head;
-        cacheEntry = AbstractGitSCMSource.getCacheEntry(remote);
         listener = new LogTaskListener(LOGGER, Level.FINER);
         this.client = client;
         commitId = rev == null ? invoke(new FSFunction<ObjectId>() {
@@ -148,10 +147,9 @@ public class GitSCMFileSystem extends SCMFileSystem {
     }
 
     /*package*/ <V> V invoke(final FSFunction<V> function) throws IOException, InterruptedException {
-        Lock cacheLock = AbstractGitSCMSource.getCacheLock(cacheEntry);
-        cacheLock.lock();
+        Cache.lock(remote);
         try {
-            File cacheDir = AbstractGitSCMSource.getCacheDir(cacheEntry);
+            File cacheDir = Cache.getCacheDir(remote);
             if (cacheDir == null || !cacheDir.isDirectory()) {
                 throw new IOException("Closed");
             }
@@ -163,7 +161,7 @@ public class GitSCMFileSystem extends SCMFileSystem {
                 }
             });
         } finally {
-            cacheLock.unlock();
+            Cache.unlock(remote);
         }
     }
 
@@ -177,10 +175,9 @@ public class GitSCMFileSystem extends SCMFileSystem {
             // 2. what has changed between the current revision and the current revision
             return false;
         }
-        Lock cacheLock = AbstractGitSCMSource.getCacheLock(cacheEntry);
-        cacheLock.lock();
+        Cache.lock(remote);
         try {
-            File cacheDir = AbstractGitSCMSource.getCacheDir(cacheEntry);
+            File cacheDir = Cache.getCacheDir(remote);
             if (cacheDir == null || !cacheDir.isDirectory()) {
                 throw new IOException("Closed");
             }
@@ -207,7 +204,7 @@ public class GitSCMFileSystem extends SCMFileSystem {
                 changeLogStream.close();
             }
         } finally {
-            cacheLock.unlock();
+            Cache.unlock(remote);
         }
     }
 
@@ -245,11 +242,9 @@ public class GitSCMFileSystem extends SCMFileSystem {
             UserRemoteConfig config = gitSCM.getUserRemoteConfigs().get(0);
             BranchSpec branchSpec = gitSCM.getBranches().get(0);
             String remote = config.getUrl();
-            String cacheEntry = AbstractGitSCMSource.getCacheEntry(remote);
-            Lock cacheLock = AbstractGitSCMSource.getCacheLock(cacheEntry);
-            cacheLock.lock();
+            Cache.lock(remote);
             try {
-                File cacheDir = AbstractGitSCMSource.getCacheDir(cacheEntry);
+                File cacheDir = Cache.getCacheDir(remote);
                 Git git = Git.with(listener, new EnvVars(EnvVars.masterEnvVars)).in(cacheDir);
                 GitTool tool = gitSCM.resolveGitTool(listener);
                 if (tool != null) {
@@ -307,7 +302,7 @@ public class GitSCMFileSystem extends SCMFileSystem {
                 listener.getLogger().println("Done.");
                 return new GitSCMFileSystem(client, remote, Constants.R_REMOTES + remoteName + "/" +headName, (AbstractGitSCMSource.SCMRevisionImpl) rev);
             } finally {
-                cacheLock.unlock();
+                Cache.unlock(remote);
             }
         }
 
@@ -320,11 +315,9 @@ public class GitSCMFileSystem extends SCMFileSystem {
             TaskListener listener = new LogTaskListener(LOGGER, Level.FINE);
             AbstractGitSCMSource gitSCMSource = (AbstractGitSCMSource) source;
             GitSCMBuilder<?> builder = gitSCMSource.newBuilder(head, rev);
-            String cacheEntry = gitSCMSource.getCacheEntry();
-            Lock cacheLock = AbstractGitSCMSource.getCacheLock(cacheEntry);
-            cacheLock.lock();
+            Cache.lock(gitSCMSource.getRemote());
             try {
-                File cacheDir = AbstractGitSCMSource.getCacheDir(cacheEntry);
+                File cacheDir = Cache.getCacheDir(gitSCMSource.getRemote());
                 Git git = Git.with(listener, new EnvVars(EnvVars.masterEnvVars)).in(cacheDir);
                 GitTool tool = gitSCMSource.resolveGitTool(builder.gitTool());
                 if (tool != null) {
@@ -351,7 +344,7 @@ public class GitSCMFileSystem extends SCMFileSystem {
                 return new GitSCMFileSystem(client, gitSCMSource.getRemote(), Constants.R_REMOTES+remoteName+"/"+head.getName(),
                         (AbstractGitSCMSource.SCMRevisionImpl) rev);
             } finally {
-                cacheLock.unlock();
+                Cache.unlock(gitSCMSource.getRemote());
             }
         }
     }
