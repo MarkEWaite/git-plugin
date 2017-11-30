@@ -85,6 +85,7 @@ public class AssemblaWeb extends GitRepositoryBrowser {
 
     @Extension
     public static class AssemblaWebDescriptor extends Descriptor<RepositoryBrowser<?>> {
+        @Override
         public String getDisplayName() {
             return "AssemblaWeb";
         }
@@ -101,6 +102,7 @@ public class AssemblaWeb extends GitRepositoryBrowser {
                 return FormValidation.ok();
             }
             return new URLCheck() {
+                @Override
                 protected FormValidation check() throws IOException, ServletException {
                     String v = url;
                     if (!v.endsWith("/")) {
