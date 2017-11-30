@@ -21,6 +21,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.jvnet.hudson.test.Issue;
 
 @RunWith(Parameterized.class)
 public class GitRepositoryBrowserTest {
@@ -119,12 +120,21 @@ public class GitRepositoryBrowserTest {
         return new URL(baseURL + path.getPath() + (isDiffLink ? "-diff-link" : "-file-link"));
     }
 
+    @Test
+    @Issue("JENKINS-24483") // Logged an exception instead of returning null URL
+    public void testGetUrl() throws Exception {
+        URL result = browser.getUrl();
+        assertThat(result, is(nullValue()));
+    }
+
     public class GitRepositoryBrowserImpl extends GitRepositoryBrowser {
 
+        @Override
         public URL getDiffLink(GitChangeSet.Path path) throws IOException {
             return getURL(path, true);
         }
 
+        @Override
         public URL getFileLink(GitChangeSet.Path path) throws IOException {
             return getURL(path, false);
         }
