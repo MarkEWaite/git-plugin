@@ -31,6 +31,9 @@ public abstract class GitRepositoryBrowser extends RepositoryBrowser<GitChangeSe
 
     public final URL getUrl() throws IOException {
         String u = url;
+        if (u == null || u.trim().isEmpty()) {
+            return null;
+        }
         StaplerRequest req = Stapler.getCurrentRequest();
         if (req != null) {
             Job job = req.findAncestorObject(Job.class);
