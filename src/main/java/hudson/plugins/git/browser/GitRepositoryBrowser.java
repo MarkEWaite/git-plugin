@@ -15,22 +15,22 @@ import java.net.URL;
 
 public abstract class GitRepositoryBrowser extends RepositoryBrowser<GitChangeSet> {
 
-    private /* mostly final */ String url;
+    private /* mostly final */ String repoUrl;
 
     @Deprecated
     protected GitRepositoryBrowser() {
     }
 
-    protected GitRepositoryBrowser(String repourl) {
-        this.url = repourl;
+    protected GitRepositoryBrowser(String repoUrl) {
+        this.repoUrl = repoUrl;
     }
 
     public final String getRepoUrl() {
-        return url;
+        return repoUrl;
     }
 
     public final URL getUrl() throws IOException {
-        String u = url;
+        String u = repoUrl;
         if (u == null || u.trim().isEmpty()) {
             return null;
         }
@@ -44,7 +44,7 @@ public abstract class GitRepositoryBrowser extends RepositoryBrowser<GitChangeSe
                 } catch (InterruptedException e) {
                     throw new IOException("Failed to retrieve job environment", e);
                 }
-                u = env.expand(url);
+                u = env.expand(repoUrl);
             }
         }
 
