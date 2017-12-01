@@ -95,16 +95,15 @@ public class AssemblaWeb extends GitRepositoryBrowser {
             return req.bindJSON(AssemblaWeb.class, jsonObject);
         }
 
-        public FormValidation doCheckUrl(@QueryParameter(fixEmpty = true) final String url)
+        public FormValidation doCheckRepoUrl(@QueryParameter(fixEmpty = true) final String value)
                 throws IOException, ServletException {
-            if (url == null) // nothing entered yet
-            {
+            if (value == null) { // nothing entered yet
                 return FormValidation.ok();
             }
             return new URLCheck() {
                 @Override
                 protected FormValidation check() throws IOException, ServletException {
-                    String v = url;
+                    String v = value;
                     if (!v.endsWith("/")) {
                         v += '/';
                     }
