@@ -7,9 +7,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.junit.Test;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.jvnet.hudson.test.Issue;
 
 @RunWith(Parameterized.class)
 public class AssemblaWebTest {
@@ -42,6 +44,20 @@ public class AssemblaWebTest {
     }
 
     @Test
+    @Issue("JENKINS-24483")
+    public void testGetChangeSetLink_EmptyRepoURL() throws Exception {
+        URL result = (new AssemblaWeb("")).getChangeSetLink(sample.changeSet);
+        assertThat(result, is(nullValue(URL.class)));
+    }
+
+    @Test
+    @Issue("JENKINS-24483")
+    public void testGetChangeSetLink_InvalidRepoURL() throws Exception {
+        URL result = (new AssemblaWeb("this is truly not a URL")).getChangeSetLink(sample.changeSet);
+        assertThat(result, is(nullValue(URL.class)));
+    }
+
+    @Test
     public void testGetDiffLink() throws Exception {
         AssemblaWeb assemblaWeb = new AssemblaWeb(repoUrl);
         for (GitChangeSet.Path path : sample.changeSet.getPaths()) {
@@ -50,6 +66,30 @@ public class AssemblaWebTest {
             URL expectedDiffLink = new URL(repoUrl + "commits/" + sample.id);
             String msg = "Wrong link for path: " + path.getPath() + ", edit type: " + editType.getName();
             assertEquals(msg, expectedDiffLink, diffLink);
+        }
+    }
+
+    @Test
+    @Issue("JENKINS-24483")
+    public void testGetDiffLink_EmptyURL() throws Exception {
+        AssemblaWeb assemblaWeb = new AssemblaWeb("");
+        for (GitChangeSet.Path path : sample.changeSet.getPaths()) {
+            URL diffLink = assemblaWeb.getDiffLink(path);
+            EditType editType = path.getEditType();
+            String msg = "Wrong link for path: " + path.getPath() + ", edit type: " + editType.getName();
+            assertThat(msg, diffLink, is(nullValue()));
+        }
+    }
+
+    @Test
+    @Issue("JENKINS-24483")
+    public void testGetDiffLink_InvalidURL() throws Exception {
+        AssemblaWeb assemblaWeb = new AssemblaWeb("another string that isn't a valid URL");
+        for (GitChangeSet.Path path : sample.changeSet.getPaths()) {
+            URL diffLink = assemblaWeb.getDiffLink(path);
+            EditType editType = path.getEditType();
+            String msg = "Wrong link for path: " + path.getPath() + ", edit type: " + editType.getName();
+            assertThat(msg, diffLink, is(nullValue()));
         }
     }
 
@@ -72,4 +112,27 @@ public class AssemblaWebTest {
         }
     }
 
+    @Test
+    @Issue("JENKINS-24483")
+    public void testGetFileLink_EmptyRepoURL() throws Exception {
+        AssemblaWeb assemblaWeb = new AssemblaWeb("");
+        for (GitChangeSet.Path path : sample.changeSet.getPaths()) {
+            URL fileLink = assemblaWeb.getFileLink(path);
+            EditType editType = path.getEditType();
+            String msg = "Wrong link for path: " + path.getPath() + ", edit type: " + editType.getName();
+            assertThat(msg, fileLink, is(nullValue()));
+        }
+    }
+
+    @Test
+    @Issue("JENKINS-24483")
+    public void testGetFileLink_InvalidRepoURL() throws Exception {
+        AssemblaWeb assemblaWeb = new AssemblaWeb("this is not a URL");
+        for (GitChangeSet.Path path : sample.changeSet.getPaths()) {
+            URL fileLink = assemblaWeb.getFileLink(path);
+            EditType editType = path.getEditType();
+            String msg = "Wrong link for path: " + path.getPath() + ", edit type: " + editType.getName();
+            assertThat(msg, fileLink, is(nullValue()));
+        }
+    }
 }

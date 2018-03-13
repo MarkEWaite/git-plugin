@@ -8,7 +8,6 @@ import hudson.scm.EditType;
 import hudson.scm.RepositoryBrowser;
 import hudson.util.FormValidation;
 import hudson.util.FormValidation.URLCheck;
-import hudson.scm.browsers.QueryBuilder;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -16,10 +15,7 @@ import org.kohsuke.stapler.StaplerRequest;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLEncoder;
 
 /**
  * AssemblaWeb Git Browser URLs
@@ -44,6 +40,9 @@ public class AssemblaWeb extends GitRepositoryBrowser {
     @Override
     public URL getChangeSetLink(GitChangeSet changeSet) throws IOException {
         URL url = getUrl();
+        if (url == null) {
+            return null;
+        }
         return new URL(url, url.getPath() + "commits/" + changeSet.getId());
     }
 
@@ -74,6 +73,9 @@ public class AssemblaWeb extends GitRepositoryBrowser {
     public URL getFileLink(Path path) throws IOException {
         GitChangeSet changeSet = path.getChangeSet();
         URL url = getUrl();
+        if (url == null) {
+            return null;
+        }
         if (path.getEditType() == EditType.DELETE) {
             return new URL(url, url.getPath() + "nodes/" + changeSet.getParentCommit() + path.getPath());
         } else {
@@ -83,6 +85,7 @@ public class AssemblaWeb extends GitRepositoryBrowser {
 
     @Extension
     public static class AssemblaWebDescriptor extends Descriptor<RepositoryBrowser<?>> {
+        @Override
         public String getDisplayName() {
             return "AssemblaWeb";
         }
@@ -92,15 +95,15 @@ public class AssemblaWeb extends GitRepositoryBrowser {
             return req.bindJSON(AssemblaWeb.class, jsonObject);
         }
 
-        public FormValidation doCheckUrl(@QueryParameter(fixEmpty = true) final String url)
+        public FormValidation doCheckRepoUrl(@QueryParameter(fixEmpty = true) final String value)
                 throws IOException, ServletException {
-            if (url == null) // nothing entered yet
-            {
+            if (value == null) { // nothing entered yet
                 return FormValidation.ok();
             }
             return new URLCheck() {
+                @Override
                 protected FormValidation check() throws IOException, ServletException {
-                    String v = url;
+                    String v = value;
                     if (!v.endsWith("/")) {
                         v += '/';
                     }

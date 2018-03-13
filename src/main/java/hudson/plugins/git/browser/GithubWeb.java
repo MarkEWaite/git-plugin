@@ -6,6 +6,7 @@ import hudson.plugins.git.GitChangeSet;
 import hudson.plugins.git.GitChangeSet.Path;
 import hudson.scm.EditType;
 import hudson.scm.RepositoryBrowser;
+import hudson.util.FormValidation;
 import net.sf.json.JSONObject;
 
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -13,13 +14,15 @@ import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
 import java.net.URL;
+import javax.servlet.ServletException;
+import org.kohsuke.stapler.QueryParameter;
 
 /**
  * Git Browser URLs
  */
 public class GithubWeb extends GitRepositoryBrowser {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     @DataBoundConstructor
     public GithubWeb(String repoUrl) {
@@ -89,9 +92,32 @@ public class GithubWeb extends GitRepositoryBrowser {
         }
 
         @Override
-		public GithubWeb newInstance(StaplerRequest req, JSONObject jsonObject) throws FormException {
-			return req.bindJSON(GithubWeb.class, jsonObject);
-		}
-	}
+        public GithubWeb newInstance(StaplerRequest req, JSONObject jsonObject) throws FormException {
+            return req.bindJSON(GithubWeb.class, jsonObject);
+        }
+
+        public FormValidation doCheckRepoUrl(@QueryParameter(fixEmpty = true) final String value)
+                throws IOException, ServletException {
+            if (value == null) { // nothing entered yet
+                return FormValidation.warning("Empty URL");
+            }
+            return new FormValidation.URLCheck() {
+                @Override
+                protected FormValidation check() throws IOException, ServletException {
+                    String v = value;
+                    try {
+                        // Too heavy a check, won't work for authenticated URL's
+                        if (findText(open(new URL(v)), "GitHub")) {
+                            return FormValidation.ok();
+                        } else {
+                            return FormValidation.warning("This is a valid URL but it doesn't look like GitHub");
+                        }
+                    } catch (IOException e) {
+                        return handleIOException(v, e);
+                    }
+                }
+            }.check();
+        }
+    }
 
 }
