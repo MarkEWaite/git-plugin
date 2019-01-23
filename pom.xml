@@ -277,7 +277,7 @@
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
       <artifactId>workflow-api</artifactId>
-      <version>2.18</version>
+      <version>2.33</version>
       <scope>test</scope>
     </dependency>
     <!-- Satisfy upper bounds dependency warnings -->
