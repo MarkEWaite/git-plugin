@@ -120,6 +120,8 @@ public class GitChangeSetTruncateTest {
         String initialImpl = random.nextBoolean() ? "git" : "jgit";
         GitClient gitClient = Git.with(TaskListener.NULL, new EnvVars()).in(repoRoot).using(initialImpl).getClient();
         gitClient.init_().workspace(repoRoot.getAbsolutePath()).execute();
+        CliGitCommand command = new CliGitCommand(gitClient);
+        command.setDefaults();
         new CliGitCommand(gitClient, "config", "user.name", "ChangeSet Truncation Test");
         new CliGitCommand(gitClient, "config", "user.email", "ChangeSetTruncation@example.com");
     }
