@@ -31,7 +31,7 @@
     <no-test-jar>false</no-test-jar>
     <useBeta>true</useBeta>
     <concurrency>1C</concurrency>
-    <jcasc.version>1.30</jcasc.version>
+    <jcasc.version>1.32</jcasc.version>
     <linkXRef>false</linkXRef>
   </properties>
 
