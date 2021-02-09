@@ -1,5 +1,5 @@
 unclassified:
-  gitSCM:
+  git:
     allowSecondFetch: true
     createAccountBasedOnEmail: true
     globalConfigEmail: "me@mail.com"
