@@ -115,8 +115,7 @@ public class DiscoverOtherRefsTrait extends SCMSourceTrait {
     /**
      * Our descriptor.
      */
-    // @Symbol("discoverOtherRefs")
-    @Symbol("discoverOtherRefsTrait") // Avoid JCasC warning about obsolete symbol
+    @Symbol(value={"discoverOtherRefs","discoverOtherRefsTrait"}) // Avoid JCasC warning about obsolete symbol
     @Extension
     @Discovery
     public static class DescriptorImpl extends SCMSourceTraitDescriptor {
