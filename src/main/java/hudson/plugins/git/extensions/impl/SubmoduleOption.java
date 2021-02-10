@@ -52,6 +52,11 @@ public class SubmoduleOption extends GitSCMExtension {
     private Integer threads;
 
     @DataBoundConstructor
+    public SubmoduleOption() {
+        this(false, false, false, null, -1, false);
+    }
+
+    @Whitelisted
     public SubmoduleOption(boolean disableSubmodules, boolean recursiveSubmodules, boolean trackingSubmodules, String reference, Integer timeout, boolean parentCredentials) {
         this.disableSubmodules = disableSubmodules;
         this.recursiveSubmodules = recursiveSubmodules;
@@ -66,9 +71,19 @@ public class SubmoduleOption extends GitSCMExtension {
         return disableSubmodules;
     }
 
+    @DataBoundSetter
+    public void setDisableSubmodules(boolean value) {
+        disableSubmodules = value;
+    }
+
     @Whitelisted
     public boolean isRecursiveSubmodules() {
         return recursiveSubmodules;
+    }
+
+    @DataBoundSetter
+    public void setRecursiveSubmodules(boolean value) {
+        recursiveSubmodules = value;
     }
 
     @Whitelisted
@@ -76,9 +91,19 @@ public class SubmoduleOption extends GitSCMExtension {
         return trackingSubmodules;
     }
 
+    @DataBoundSetter
+    public void setTrackingSubmodules(boolean value) {
+        trackingSubmodules = value;
+    }
+
     @Whitelisted
     public boolean isParentCredentials() {
         return parentCredentials;
+    }
+
+    @DataBoundSetter
+    public void setParentCredentials(boolean value) {
+        parentCredentials = value;
     }
 
     @Whitelisted
@@ -86,9 +111,19 @@ public class SubmoduleOption extends GitSCMExtension {
         return reference;
     }
 
+    @DataBoundSetter
+    public void setReference(String value) {
+        reference = value;
+    }
+
     @Whitelisted
     public Integer getTimeout() {
         return timeout;
+    }
+
+    @DataBoundSetter
+    public void setTimeout(Integer value) {
+        timeout = value;
     }
 
     @DataBoundSetter
