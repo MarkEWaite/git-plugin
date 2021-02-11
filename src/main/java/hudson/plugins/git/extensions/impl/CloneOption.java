@@ -37,13 +37,13 @@ public class CloneOption extends GitSCMExtension {
     private boolean shallow = false;
     private boolean noTags = false;
     private String reference = null;
-    private Integer timeout = -1;
+    private Integer timeout = 10;
     private Integer depth = -1;
     private boolean honorRefspec = false;
 
     @DataBoundConstructor
     public CloneOption() {
-        this(false, false, null, 0);
+        this(false, false, null, 10);
     }
 
     public CloneOption(boolean shallow, String reference, Integer timeout) {
