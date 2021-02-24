@@ -101,9 +101,11 @@ public class CredentialsUserRemoteConfigTest {
     private String randomPipelineExtensions() {
         /* Valid extensions to apply to a git checkout */
         String [] extensions = {
+            // ancestorCommitSha1 needs to be a SHA-1 that exists in the repository
             // "[$class: 'BuildChooserSetting', buildChooser: [$class: 'AncestryBuildChooser', ancestorCommitSha1: 'feedbeefbeadcededeedabed', maximumAgeInDays: 23]]",
+            // Inverse build chooser will find nothing to build and fails the test
             // "[$class: 'BuildChooserSetting', buildChooser: [$class: 'InverseBuildChooser']]",
-            // "[$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: 'src'], [path: 'Makefile']]]",
+            "[$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: 'src'], [path: 'Makefile']]]",
             "[$class: 'AuthorInChangelog']",
             "[$class: 'BuildChooserSetting', buildChooser: [$class: 'DefaultBuildChooser']]",
             "[$class: 'BuildSingleRevisionOnly']",
