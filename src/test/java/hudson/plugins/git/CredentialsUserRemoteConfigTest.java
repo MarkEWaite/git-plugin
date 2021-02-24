@@ -235,10 +235,8 @@ public class CredentialsUserRemoteConfigTest {
         }
         extras.append(randomPipelineExtensions());
         if (random.nextBoolean()) {
-            extras.append("      , ");
-            extras.append("doGenerateSubmoduleConfigurations: ");
-            extras.append(random.nextBoolean() ? "true" : "false");
-            extras.append('\n');
+            extras.append("      , doGenerateSubmoduleConfigurations: false\n");
+            extras.append("      , submoduleCfg: []\n");
         }
         return extras.toString();
     }
