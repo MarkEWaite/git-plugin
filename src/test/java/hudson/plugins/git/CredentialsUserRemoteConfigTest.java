@@ -75,11 +75,11 @@ public class CredentialsUserRemoteConfigTest {
         return "    ]\n";
     }
 
-    private WorkflowJob createProjectWithCredential() throws IOException {
+    private WorkflowJob createProjectWithCredential() throws Exception {
         return createProject(true);
     }
 
-    private WorkflowJob createProject(boolean useCredential) throws IOException {
+    private WorkflowJob createProject(boolean useCredential) throws Exception {
         String credentialsPhrase = useCredential ? "credentialsId: '" + credential + "', " : "";
         WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
@@ -94,6 +94,9 @@ public class CredentialsUserRemoteConfigTest {
         return p;
     }
 
+    /* SHA that will be replaced when project is created */
+    private static final String SHA_TO_REPLACE = "feedbeefbeadcededeedabed";
+
     /* Return randomly selected pipeline checkout configurations.
      * Pipeline assertions in this file are not affected by these assertions.
      * References to invalid classes or invalid keywords will fail the tests.
@@ -102,7 +105,7 @@ public class CredentialsUserRemoteConfigTest {
         /* Valid extensions to apply to a git checkout */
         String [] extensions = {
             // ancestorCommitSha1 needs to be a SHA-1 that exists in the repository
-            // "[$class: 'BuildChooserSetting', buildChooser: [$class: 'AncestryBuildChooser', ancestorCommitSha1: 'feedbeefbeadcededeedabed', maximumAgeInDays: 23]]",
+            "[$class: 'BuildChooserSetting', buildChooser: [$class: 'AncestryBuildChooser', ancestorCommitSha1: '" + SHA_TO_REPLACE + "', maximumAgeInDays: 23]]",
             // Inverse build chooser will find nothing to build and fails the test
             // "[$class: 'BuildChooserSetting', buildChooser: [$class: 'InverseBuildChooser']]",
             "[$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: 'src'], [path: 'Makefile']]]",
@@ -184,7 +187,7 @@ public class CredentialsUserRemoteConfigTest {
     /* Return randomly selected pipeline checkout configurations.
      * These pipeline configurations should not alter the assertions in the tests.
      */
-    private String randomPipelineCheckoutExtras() {
+    private String randomPipelineCheckoutExtras() throws Exception {
         String[] browsers = {
             "",
             "[$class: 'AssemblaWeb', repoUrl: 'https://app.assembla.com/spaces/git-plugin/git/source']",
@@ -233,7 +236,7 @@ public class CredentialsUserRemoteConfigTest {
             extras.append(browser);
             extras.append('\n');
         }
-        extras.append(randomPipelineExtensions());
+        extras.append(randomPipelineExtensions().replace(SHA_TO_REPLACE, sampleRepo.head()));
         if (random.nextBoolean()) {
             extras.append("      , doGenerateSubmoduleConfigurations: false\n");
             extras.append("      , submoduleCfg: []\n");
@@ -296,7 +299,6 @@ public class CredentialsUserRemoteConfigTest {
         WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
         r.waitForMessage("No credentials specified", b);
     }
-
 
     private StandardCredentials createCredential(CredentialsScope scope, String id) {
         return new UsernamePasswordCredentialsImpl(scope, id, "desc: " + id, "username", "password");
