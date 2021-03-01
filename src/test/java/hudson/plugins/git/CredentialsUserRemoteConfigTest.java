@@ -23,6 +23,7 @@ import org.jvnet.hudson.test.JenkinsRule;
 
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 public class CredentialsUserRemoteConfigTest {
 
@@ -59,6 +60,15 @@ public class CredentialsUserRemoteConfigTest {
     @Before
     public void generateCredentialID() {
         credential = "credential-id-" + (100 + random.nextInt(900));
+    }
+
+    @Before
+    public void initSampleRepo() throws Exception {
+        sampleRepo.init();
+        assertTrue("Failed to create src dir in sample repo", sampleRepo.mkdirs("src"));
+        sampleRepo.write("src/sample.txt", "Contents of src/sample.txt");
+        sampleRepo.git("add", "src/sample.txt");
+        sampleRepo.git("commit", "-m", "Add src/sample.txt to sample repo");
     }
 
     private String classProlog() {
@@ -247,7 +257,6 @@ public class CredentialsUserRemoteConfigTest {
     @Issue("JENKINS-30515")
     @Test
     public void checkoutWithValidCredentials() throws Exception {
-        sampleRepo.init();
         store.addCredentials(Domain.global(), createCredential(CredentialsScope.GLOBAL, credential));
         store.save();
 
@@ -259,7 +268,6 @@ public class CredentialsUserRemoteConfigTest {
     @Issue("JENKINS-30515")
     @Test
     public void checkoutWithDifferentCredentials() throws Exception {
-        sampleRepo.init();
         store.addCredentials(Domain.global(), createCredential(CredentialsScope.GLOBAL, "other"));
         store.save();
 
@@ -271,7 +279,6 @@ public class CredentialsUserRemoteConfigTest {
     @Issue("JENKINS-30515")
     @Test
     public void checkoutWithInvalidCredentials() throws Exception {
-        sampleRepo.init();
         store.addCredentials(Domain.global(), createCredential(CredentialsScope.SYSTEM, "github"));
         store.save();
 
@@ -283,8 +290,6 @@ public class CredentialsUserRemoteConfigTest {
     @Issue("JENKINS-30515")
     @Test
     public void checkoutWithNoCredentialsStoredButUsed() throws Exception {
-        sampleRepo.init();
-
         WorkflowJob p = createProjectWithCredential();
         WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
         r.waitForMessage("Warning: CredentialId \"" + credential + "\" could not be found", b);
@@ -293,8 +298,6 @@ public class CredentialsUserRemoteConfigTest {
     @Issue("JENKINS-30515")
     @Test
     public void checkoutWithNoCredentialsSpecified() throws Exception {
-        sampleRepo.init();
-
         WorkflowJob p = createProject(false);
         WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
         r.waitForMessage("No credentials specified", b);
