@@ -30,6 +30,7 @@ import com.cloudbees.plugins.credentials.common.IdCredentials;
 import com.cloudbees.plugins.credentials.domains.Domain;
 import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
 import hudson.model.Label;
+import hudson.model.Result;
 import hudson.plugins.git.GitSCM;
 import hudson.plugins.git.GitTagAction;
 import hudson.plugins.git.extensions.impl.LocalBranch;
@@ -54,6 +55,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
@@ -64,8 +66,8 @@ import org.jvnet.hudson.test.JenkinsRule;
  */
 public class GitStepTest {
 
-    @Rule
-    public JenkinsRule r = new JenkinsRule();
+    @ClassRule
+    public static JenkinsRule r = new JenkinsRule();
     @Rule
     public GitSampleRepoRule sampleRepo = new GitSampleRepoRule();
     @Rule
@@ -98,7 +100,7 @@ public class GitStepTest {
     @Test
     public void basicCloneAndUpdate() throws Exception {
         sampleRepo.init();
-        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "demo");
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "basicCloneAndUpdate");
         r.createOnlineSlave(Label.get("remote"));
         p.setDefinition(new CpsFlowDefinition(
             "node('remote') {\n" +
@@ -119,9 +121,38 @@ public class GitStepTest {
     }
 
     @Test
+    @Issue("JENKINS-65183")
+    public void differentDefaultBranchName() throws Exception {
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "differentDefaultBranchName");
+        p.setDefinition(new CpsFlowDefinition(
+                "node {\n" +
+                "  git 'https://github.com/MarkEWaite/peass-ci.git'\n" +
+                "}\n", true));
+        // Confirm the bug exists
+        WorkflowRun b = r.assertBuildStatus(Result.FAILURE, p.scheduleBuild2(0));
+        r.waitForMessage("ERROR: Couldn't find any revision to build", b);
+        // Should use this instead when the bug is fixed
+        // WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        // r.waitForMessage("Cloning the remote Git repository", b); // GitSCM.retrieveChanges
+    }
+
+    @Test
+    @Issue("JENKINS-65183") // Confirm the workaround
+    public void differentDefaultBranchNameWithBranchName() throws Exception {
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "differentDefaultBranchNameWithBranchName");
+        p.setDefinition(new CpsFlowDefinition(
+                "node {\n" +
+                "  git(url: 'https://github.com/MarkEWaite/peass-ci.git', branch: 'main')\n" +
+                "}\n", true));
+        // Confirm the workaround allows the job to succeed
+        WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        r.waitForMessage("Cloning the remote Git repository", b); // GitSCM.retrieveChanges
+    }
+
+    @Test
     public void changelogAndPolling() throws Exception {
         sampleRepo.init();
-        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "demo");
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "changelogAndPolling");
         p.addTrigger(new SCMTrigger("")); // no schedule, use notifyCommit only
         r.createOnlineSlave(Label.get("remote"));
         p.setDefinition(new CpsFlowDefinition(
@@ -158,7 +189,7 @@ public class GitStepTest {
         otherRepo.write("otherfile", "");
         otherRepo.git("add", "otherfile");
         otherRepo.git("commit", "--message=init");
-        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "demo");
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "multipleSCMs");
         p.addTrigger(new SCMTrigger(""));
         p.setQuietPeriod(3); // so it only does one build
         p.setDefinition(new CpsFlowDefinition(
@@ -222,7 +253,7 @@ public class GitStepTest {
         otherRepo.write("firstfile", "");
         otherRepo.git("add", "firstfile");
         otherRepo.git("commit", "--message=init");
-        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "demo");
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "identicalGitSCMs");
         p.setDefinition(new CpsFlowDefinition(
             "node {\n" +
             "    dir('main') {\n" +
@@ -252,7 +283,7 @@ public class GitStepTest {
     @Test
     public void commitToWorkspace() throws Exception {
         sampleRepo.init();
-        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "commitToWorkspace");
         p.setDefinition(new CpsFlowDefinition(
             "def rungit(cmd) {def gitcmd = \"git ${cmd}\"; if (isUnix()) {sh gitcmd} else {bat gitcmd}}\n" +
             "node {\n" +
