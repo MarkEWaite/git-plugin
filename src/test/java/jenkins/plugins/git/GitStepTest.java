@@ -32,6 +32,7 @@ import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
 import hudson.model.Label;
 import hudson.plugins.git.GitSCM;
 import hudson.plugins.git.GitTagAction;
+import hudson.plugins.git.extensions.impl.LocalBranch;
 import hudson.plugins.git.util.BuildData;
 import hudson.scm.ChangeLogSet;
 import hudson.scm.SCM;
@@ -44,7 +45,14 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepConfigTester;
-import static org.junit.Assert.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -257,4 +265,61 @@ public class GitStepTest {
         r.waitForMessage("+edited by build", b);
     }
 
+    @Test
+    public void testGetUrl() {
+        String url = sampleRepo.fileUrl();
+        GitStep gitStep = new GitStep(url);
+        assertThat(gitStep.getUrl(), is(url));
+    }
+
+    @Test
+    public void testGetBranch() {
+        String url = sampleRepo.fileUrl();
+        GitStep gitStep = new GitStep(url);
+        assertThat(gitStep.getBranch(), is("master"));
+    }
+
+    @Test
+    public void testSetBranch() {
+        String url = sampleRepo.fileUrl();
+        GitStep gitStep = new GitStep(url);
+        String branch = "not-master";
+        gitStep.setBranch(branch);
+        assertThat(gitStep.getBranch(), is(branch));
+    }
+
+    @Test
+    public void testGetCredentialsId() {
+        String url = sampleRepo.fileUrl();
+        GitStep gitStep = new GitStep(url);
+        assertThat(gitStep.getCredentialsId(), is(nullValue()));
+    }
+
+    @Test
+    public void testSetCredentialsId() {
+        String credentialsId = "credentials-id-string";
+        String url = sampleRepo.fileUrl();
+        GitStep gitStep = new GitStep(url);
+        gitStep.setCredentialsId(credentialsId);
+        assertThat(gitStep.getCredentialsId(), is(credentialsId));
+    }
+
+    @Test
+    public void testCreateSCM() {
+        String url = sampleRepo.fileUrl();
+        GitStep gitStep = new GitStep(url);
+        assertThat(gitStep.createSCM(), instanceOf(GitSCM.class));
+        GitSCM gitSCM = (GitSCM) gitStep.createSCM();
+        assertThat(gitSCM.getExtensions(), hasItem(new LocalBranch("master")));
+    }
+
+    @Test
+    public void testCreateSCMNonDefaultBranch() {
+        String url = sampleRepo.fileUrl();
+        GitStep gitStep = new GitStep(url);
+        String branch = "not-master";
+        gitStep.setBranch(branch);
+        GitSCM gitSCM = (GitSCM) gitStep.createSCM();
+        assertThat(gitSCM.getExtensions(), hasItem(new LocalBranch(branch)));
+    }
 }
