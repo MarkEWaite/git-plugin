@@ -25,10 +25,15 @@
 package jenkins.plugins.git;
 
 import com.google.inject.Inject;
+import hudson.EnvVars;
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.Util;
 import hudson.model.Item;
+import hudson.model.Run;
+import hudson.model.TaskListener;
 import hudson.plugins.git.BranchSpec;
+import hudson.plugins.git.GitException;
 import hudson.plugins.git.GitSCM;
 import hudson.plugins.git.UserRemoteConfig;
 import hudson.plugins.git.extensions.GitSCMExtension;
@@ -36,8 +41,15 @@ import hudson.plugins.git.extensions.impl.LocalBranch;
 import hudson.scm.SCM;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import jenkins.model.Jenkins;
+import org.jenkinsci.plugins.gitclient.GitClient;
 import org.jenkinsci.plugins.workflow.steps.scm.SCMStep;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -49,9 +61,10 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
  * Runs Git using {@link GitSCM}.
  */
 public final class GitStep extends SCMStep {
+    final static String DEFAULT_BRANCH = "master";
 
     private final String url;
-    private String branch = "master";
+    private String branch = "";
     private String credentialsId;
 
     @DataBoundConstructor
@@ -81,9 +94,37 @@ public final class GitStep extends SCMStep {
         this.credentialsId = Util.fixEmpty(credentialsId);
     }
 
+    private String computeRemoteBranchName() {
+        if (branch != null && !branch.isEmpty()) {
+            return "*/" + branch;
+        }
+        /*
+        GitSCM gitSCM = new GitSCM(GitSCM.createRepoList(url, credentialsId), Collections.singletonList(new BranchSpec("*" + "/*")), null, null, null);
+        List<UserRemoteConfig> remoteConfigs = gitSCM.getUserRemoteConfigs();
+        String url = remoteConfigs.get(0).getUrl();
+        String credentialsId = remoteConfigs.get(0).getCredentialsId();
+        FilePath workspace = new FilePath(new File("."));
+        Run<?,?> build = null;
+        try {
+            gitClient = gitSCM.createClient(TaskListener.NULL, new EnvVars(), build, workspace);
+        } catch (IOException | InterruptedException ex) {
+            Logger.getLogger(GitStep.class.getName()).log(Level.SEVERE, null, ex);
+            return "*" + "/master";
+        }
+        Map <String, String> symbolicReferences;
+        symbolicReferences = gitClient.getRemoteSymbolicReferences(url, "HEAD");
+        if (symbolicReferences != null && symbolicReferences.containsKey("HEAD")) {
+            return "*" + "/" + symbolicReferences.get("HEAD");
+        }
+        */
+        return "*/master";
+    }
+
     @Override
     public SCM createSCM() {
-        return new GitSCM(GitSCM.createRepoList(url, credentialsId), Collections.singletonList(new BranchSpec("*/" + branch)), null, null, Collections.<GitSCMExtension>singletonList(new LocalBranch(branch)));
+        String computedBranch = computeRemoteBranchName();
+        String computedLocalBranch = (branch != null && !branch.isEmpty()) ? branch : "";
+        return new GitSCM(GitSCM.createRepoList(url, credentialsId), Collections.singletonList(new BranchSpec(computedBranch)), null, null, Collections.<GitSCMExtension>singletonList(new LocalBranch(computedLocalBranch)));
     }
 
     @Extension

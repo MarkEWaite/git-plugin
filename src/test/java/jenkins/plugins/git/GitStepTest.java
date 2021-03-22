@@ -307,7 +307,7 @@ public class GitStepTest {
     public void testGetBranch() {
         String url = sampleRepo.fileUrl();
         GitStep gitStep = new GitStep(url);
-        assertThat(gitStep.getBranch(), is("master"));
+        assertThat(gitStep.getBranch(), is(""));
     }
 
     @Test
@@ -341,7 +341,7 @@ public class GitStepTest {
         GitStep gitStep = new GitStep(url);
         assertThat(gitStep.createSCM(), instanceOf(GitSCM.class));
         GitSCM gitSCM = (GitSCM) gitStep.createSCM();
-        assertThat(gitSCM.getExtensions(), hasItem(new LocalBranch("master")));
+        assertThat(gitSCM.getExtensions(), hasItem(new LocalBranch("")));
     }
 
     @Test
