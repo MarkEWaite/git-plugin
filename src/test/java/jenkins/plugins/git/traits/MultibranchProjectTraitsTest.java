@@ -108,7 +108,7 @@ public class MultibranchProjectTraitsTest {
                 "    browser: phabricator(repo: 'source/tool-spacemedia', repoUrl: 'https://phabricator.wikimedia.org/source/tool-spacemedia/'),\n",
                 "    browser: redmine('https://www.redmine.org/projects/redmine/repository'),\n",
                 "    browser: rhodeCode('https://code.rhodecode.com/rhodecode-enterprise-ce'),\n",
-                "    browser: viewGit(repoUrl: 'https://repo.or.cz/viewgit.git', projectName: 'viewgit-project-name-value'),\n", // Not likely a viewGit site, but reasonable approximation
+                "    browser: viewgit(repoUrl: 'https://repo.or.cz/viewgit.git', projectName: 'viewgit-project-name-value'),\n", // Not likely a viewgit site, but reasonable approximation
         };
         String browser = browsersBySymbolName[random.nextInt(browsersBySymbolName.length)];
         return browser;
@@ -136,7 +136,7 @@ public class MultibranchProjectTraitsTest {
                 "    browser: [$class: 'Stash', repoUrl: 'https://markewaite@bitbucket.org/markewaite/git-plugin'],\n",
                 "    browser: [$class: 'TFS2013GitRepositoryBrowser', repoUrl: 'https://markwaite.visualstudio.com/DefaultCollection/git-plugin/_git/git-plugin'],\n",
                 "    browser: [$class: 'RhodeCode', repoUrl: 'https://code.rhodecode.com/rhodecode-enterprise-ce'],\n",
-                "    browser: [$class: 'ViewGitWeb', repoUrl: 'https://git.ti.com/gitweb', projectName: 'viewgitweb-project-name-value'],\n", // Not likely a viewGit site, but reasonable approximation
+                "    browser: [$class: 'ViewGitWeb', repoUrl: 'https://git.ti.com/gitweb', projectName: 'viewgitweb-project-name-value'],\n", // Not likely a viewgit site, but reasonable approximation
         };
         String browser = browsersByClass[random.nextInt(browsersByClass.length)];
         return browser;
