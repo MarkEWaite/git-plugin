@@ -81,7 +81,7 @@ public class ViewGitWeb extends GitRepositoryBrowser {
     }
 
     @Extension
-    @Symbol("viewGit")
+    @Symbol("viewgit")
     public static class ViewGitWebDescriptor extends Descriptor<RepositoryBrowser<?>> {
         @NonNull
         public String getDisplayName() {

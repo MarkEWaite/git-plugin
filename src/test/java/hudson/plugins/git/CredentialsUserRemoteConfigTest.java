@@ -235,7 +235,7 @@ public class CredentialsUserRemoteConfigTest {
             "phabricator(repo: 'source/tool-spacemedia', repoUrl: 'https://phabricator.wikimedia.org/source/tool-spacemedia/')",
             "redmine('https://www.redmine.org/projects/redmine/repository')",
             "rhodeCode('https://code.rhodecode.com/rhodecode-enterprise-ce')",
-            "viewGit(repoUrl: 'https://repo.or.cz/viewgit.git', projectName: 'viewgit-project-name-value')", // Not likely a viewGit site, but reasonable approximation
+            "viewgit(repoUrl: 'https://repo.or.cz/viewgit.git', projectName: 'viewgit-project-name-value')", // Not likely a viewgit site, but reasonable approximation
             //  The Gitea browser is provided by the Gitea plugin, not the git plugin
             // "[$class: 'GiteaBrowser', repoUrl: 'https://try.gitea.io/MarkEWaite/git-plugin']",
         };
