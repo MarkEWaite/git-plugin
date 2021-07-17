@@ -24,6 +24,7 @@ import org.jenkinsci.plugins.gitclient.FetchCommand;
 import org.jenkinsci.plugins.gitclient.GitClient;
 import org.jenkinsci.plugins.gitclient.UnsupportedCommand;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.whitelists.Whitelisted;
+import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -33,18 +34,22 @@ import edu.umd.cs.findbugs.annotations.CheckForNull;
  * @author Kohsuke Kawaguchi
  */
 public class CloneOption extends GitSCMExtension {
-    private final boolean shallow;
-    private final boolean noTags;
-    private final String reference;
-    private final Integer timeout;
-    private Integer depth;
-    private boolean honorRefspec;
+    private boolean shallow = false;
+    private boolean noTags = false;
+    private String reference = null;
+    private Integer timeout = 10;
+    private Integer depth = -1;
+    private boolean honorRefspec = false;
+
+    @DataBoundConstructor
+    public CloneOption() {
+        this(false, false, null, 10);
+    }
 
     public CloneOption(boolean shallow, String reference, Integer timeout) {
         this(shallow, false, reference, timeout);
     }
 
-    @DataBoundConstructor
     public CloneOption(boolean shallow, boolean noTags, String reference, Integer timeout) {
         this.shallow = shallow;
         this.noTags = noTags;
@@ -58,9 +63,19 @@ public class CloneOption extends GitSCMExtension {
         return shallow;
     }
 
+    @DataBoundSetter
+    public void setShallow(boolean value) {
+        shallow = value;
+    }
+
     @Whitelisted
     public boolean isNoTags() {
         return noTags;
+    }
+
+    @DataBoundSetter
+    public void setNoTags(boolean value) {
+        noTags = value;
     }
 
     /**
@@ -111,9 +126,19 @@ public class CloneOption extends GitSCMExtension {
         return reference;
     }
 
+    @DataBoundSetter
+    public void setReference(String value) {
+        reference = value;
+    }
+
     @Whitelisted
     public Integer getTimeout() {
         return timeout;
+    }
+
+    @DataBoundSetter
+    public void setTimeout(Integer value) {
+        timeout = value;
     }
 
     @DataBoundSetter
@@ -271,6 +296,7 @@ public class CloneOption extends GitSCMExtension {
     }
 
     @Extension
+    @Symbol("cloneOption")
     public static class DescriptorImpl extends GitSCMExtensionDescriptor {
         /**
          * {@inheritDoc}
