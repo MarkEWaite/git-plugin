@@ -77,7 +77,6 @@ import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.Serializable;
 import java.io.Writer;
-import java.lang.reflect.InvocationTargetException;
 import java.text.MessageFormat;
 import java.util.AbstractList;
 import java.util.ArrayList;
@@ -102,12 +101,10 @@ import static hudson.scm.PollingResult.*;
 import hudson.Util;
 import hudson.plugins.git.extensions.impl.ScmName;
 import hudson.util.LogTaskListener;
-import hudson.util.ReflectionUtils;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static java.lang.String.format;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.lang.StringUtils.isBlank;
 
@@ -150,6 +147,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
     public static final String GIT_COMMIT = "GIT_COMMIT";
     public static final String GIT_PREVIOUS_COMMIT = "GIT_PREVIOUS_COMMIT";
     public static final String GIT_PREVIOUS_SUCCESSFUL_COMMIT = "GIT_PREVIOUS_SUCCESSFUL_COMMIT";
+    public static final String GIT_URL = "GIT_URL";
 
     /**
      * All the configured extensions attached to this.
@@ -159,6 +157,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
     @Whitelisted
     @Deprecated
+    @SuppressFBWarnings(value="EI_EXPOSE_REP", justification="Unread deprecated collection")
     public Collection<SubmoduleConfig> getSubmoduleCfg() {
         return submoduleCfg;
     }
@@ -199,6 +198,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
     }
 
     @DataBoundConstructor
+    @SuppressFBWarnings(value="EI_EXPOSE_REP2", justification="Modify access is assumed for userRemoteConfigs")
     public GitSCM(
             List<UserRemoteConfig> userRemoteConfigs,
             List<BranchSpec> branches,
@@ -230,6 +230,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
      * @since 2.0
      */
     @Whitelisted
+    @SuppressFBWarnings(value="EI_EXPOSE_REP", justification="Low risk")
     public DescribableList<GitSCMExtension, GitSCMExtensionDescriptor> getExtensions() {
         return extensions;
     }
@@ -544,6 +545,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
     }
 
     @Whitelisted
+    @SuppressFBWarnings(value="EI_EXPOSE_REP", justification="Low risk")
     public List<RemoteConfig> getRepositories() {
         // Handle null-value to ensure backwards-compatibility, ie project configuration missing the <repositories/> XML element
         if (remoteRepositories == null) {
@@ -788,7 +790,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
         GitClient git = createClient(listener, environment, project, node, workingDirectory);
 
-        if (git.hasGitRepo()) {
+        if (git.hasGitRepo(false)) {
             // Repo is there - do a fetch
             listener.getLogger().println("Fetching changes from the remote Git repositories");
 
@@ -917,14 +919,14 @@ public class GitSCM extends GitSCMBackwardCompatibility {
                 if (credentials != null) {
                     c.addCredentials(url, credentials);
                     if(!isHideCredentials()) {
-                        listener.getLogger().println(format("using credential %s", credentials.getId()));
+                        listener.getLogger().printf("using credential %s%n", credentials.getId());
                     }
                     if (project != null && project.getLastBuild() != null) {
                         CredentialsProvider.track(project.getLastBuild(), credentials);
                     }
                 } else {
                     if(!isHideCredentials()) {
-                        listener.getLogger().println(format("Warning: CredentialId \"%s\" could not be found.", ucCredentialsId));
+                        listener.getLogger().printf("Warning: CredentialId \"%s\" could not be found.%n", ucCredentialsId);
                     }
                 }
             }
@@ -1165,7 +1167,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         buildData.saveBuild(revToBuild);
 
         if (buildData.getBuildsByBranchName().size() >= 100) {
-            log.println("JENKINS-19022: warning: possible memory leak due to Git plugin usage; see: https://wiki.jenkins.io/display/JENKINS/Remove+Git+Plugin+BuildsByBranch+BuildData");
+            log.println("JENKINS-19022: warning: possible memory leak due to Git plugin usage; see: https://plugins.jenkins.io/git/#remove-git-plugin-buildsbybranch-builddata-script");
         }
         boolean checkForMultipleRevisions = true;
         BuildSingleRevisionOnly ext = extensions.get(BuildSingleRevisionOnly.class);
@@ -1204,7 +1206,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         List<RemoteConfig> repos = getParamExpandedRepos(build, listener);
         if (repos.isEmpty())    return; // defensive check even though this is an invalid configuration
 
-        if (git.hasGitRepo()) {
+        if (git.hasGitRepo(false)) {
             // It's an update
             if (repos.size() == 1)
                 log.println("Fetching changes from the remote Git repository");
@@ -1537,12 +1539,13 @@ public class GitSCM extends GitSCMBackwardCompatibility {
             repoCount++;
         }
 
-        if (userRemoteConfigs.size()==1){
-            env.put("GIT_URL", userRemoteConfigs.get(0).getUrl());
-        } else {
+        if (userRemoteConfigs.size()>0) {
+            env.put(GIT_URL, userRemoteConfigs.get(0).getUrl());
+        }
+        if (userRemoteConfigs.size()>1) {
             int count=1;
-            for(UserRemoteConfig config:userRemoteConfigs)   {
-                env.put("GIT_URL_"+count, config.getUrl());
+            for (UserRemoteConfig config:userRemoteConfigs) {
+                env.put(GIT_URL+"_"+count, config.getUrl());
                 count++;
             }
         }
@@ -1624,20 +1627,24 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         }
 
         @NonNull
-        // TODO: Add @Override when Jenkins core baseline is 2.222+
+        @Override
         public Permission getRequiredGlobalConfigPagePermission() {
-            return getJenkinsManageOrAdmin();
+            return Jenkins.MANAGE;
         }
 
-        // TODO: remove when Jenkins core baseline is 2.222+
+        /**
+         * Package protected method that was added for temporary use
+         * with the Manage permission until the plugin required a
+         * Jenkins core version that has Manage permission available.
+         * Unfortunately, because it is package protected, it is part
+         * of the class signature and needs to be retained for
+         * compatibility.  Method was removed in git plugin 4.8.0 and
+         * the removal seems to have exposed a bug elsewhere that is
+         * reported as https://issues.jenkins.io/browse/JENKINS-66296 ,
+         * Restoring this method seems to resolve that issue.
+         */
         Permission getJenkinsManageOrAdmin() {
-            Permission manage;
-            try { // Manage is available starting from Jenkins 2.222 (https://jenkins.io/changelog/#v2.222). See JEP-223 for more info
-                manage = (Permission) ReflectionUtils.getPublicProperty(Jenkins.get(), "MANAGE");
-            } catch (IllegalArgumentException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
-                manage = Jenkins.ADMINISTER;
-            }
-            return manage;
+            return Jenkins.MANAGE;
         }
 
         public boolean isShowEntireCommitSummaryInChanges() {
@@ -1897,6 +1904,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
 
     @Exported
     @Whitelisted
+    @SuppressFBWarnings(value="EI_EXPOSE_REP", justification="Low risk")
     public List<BranchSpec> getBranches() {
         return branches;
     }

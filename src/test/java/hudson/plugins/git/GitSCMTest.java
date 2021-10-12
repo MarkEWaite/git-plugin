@@ -10,10 +10,6 @@ import com.cloudbees.plugins.credentials.domains.Domain;
 import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Collections2;
-import com.google.common.collect.Lists;
-
 import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.Functions;
@@ -98,16 +94,15 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -1724,12 +1719,8 @@ public class GitSCMTest extends AbstractGitTestCase {
     // eg: "jane doe and john doe should be the culprits", culprits, [johnDoe, janeDoe])
     static public void assertCulprits(String assertMsg, Set<User> actual, PersonIdent[] expected)
     {
-        Collection<String> fullNames = Collections2.transform(actual, new Function<User,String>() {
-            public String apply(User u)
-            {
-                return u.getFullName();
-            }
-        });
+        List<String> fullNames =
+                actual.stream().map(User::getFullName).collect(Collectors.toList());
 
         for(PersonIdent p : expected)
         {
@@ -2293,7 +2284,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Test
     public void testConfigRoundtripExtensionsPreserved() throws Exception {
         FreeStyleProject p = createFreeStyleProject();
-        final String url = "git://github.com/jenkinsci/git-plugin.git";
+        final String url = "https://github.com/jenkinsci/git-plugin.git";
         GitRepositoryBrowser browser = new GithubWeb(url);
         GitSCM scm = new GitSCM(createRepoList(url),
                 Collections.singletonList(new BranchSpec("*/master")),
@@ -2344,7 +2335,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         GitSCM oldGit = (GitSCM) p.getScm();
         assertEquals(Collections.emptyList(), oldGit.getExtensions().toList());
         assertEquals(0, oldGit.getSubmoduleCfg().size());
-        assertEquals("git git://github.com/jenkinsci/model-ant-project.git", oldGit.getKey());
+        assertEquals("git https://github.com/jenkinsci/model-ant-project.git", oldGit.getKey());
         assertThat(oldGit.getEffectiveBrowser(), instanceOf(GithubWeb.class));
         GithubWeb browser = (GithubWeb) oldGit.getEffectiveBrowser();
         assertEquals(browser.getRepoUrl(), "https://github.com/jenkinsci/model-ant-project.git/");
@@ -2357,6 +2348,15 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Issue("JENKINS-53346")
     @Test
     public void testCheckoutReturnsLatestValues() throws Exception {
+
+        /* Exit test early if running on Windows and path will be too long */
+        /* Known limitation of git for Windows 2.28.0 and earlier */
+        /* Needs a longpath fix in git for Windows */
+        String currentDirectoryPath = new File(".").getCanonicalPath();
+        if (isWindows() && currentDirectoryPath.length() > 95) {
+            return;
+        }
+
         WorkflowJob p = rule.jenkins.createProject(WorkflowJob.class, "pipeline-checkout-3-tags");
         p.setDefinition(new CpsFlowDefinition(
             "node {\n" +
@@ -2550,7 +2550,7 @@ public class GitSCMTest extends AbstractGitTestCase {
             /* Older git versions have unexpected behaviors with sparse checkout */
             return;
         }
-        FreeStyleProject project = setupProject("master", Lists.newArrayList(new SparseCheckoutPath("toto")));
+        FreeStyleProject project = setupProject("master", Collections.singletonList(new SparseCheckoutPath("toto")));
 
         // run build first to create workspace
         final String commitFile1 = "toto/commitFile1";
@@ -2571,7 +2571,7 @@ public class GitSCMTest extends AbstractGitTestCase {
             /* Older git versions have unexpected behaviors with sparse checkout */
             return;
         }
-        FreeStyleProject project = setupProject("master", Lists.newArrayList(new SparseCheckoutPath("titi")));
+        FreeStyleProject project = setupProject("master", Collections.singletonList(new SparseCheckoutPath("titi")));
 
         // run build first to create workspace
         final String commitFile1 = "toto/commitFile1";
@@ -2606,7 +2606,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         assertTrue(build1.getWorkspace().child("toto").exists());
         assertTrue(build1.getWorkspace().child(commitFile1).exists());
 
-        ((GitSCM) project.getScm()).getExtensions().add(new SparseCheckoutPaths(Lists.newArrayList(new SparseCheckoutPath("titi"))));
+        ((GitSCM) project.getScm()).getExtensions().add(new SparseCheckoutPaths(Collections.singletonList(new SparseCheckoutPath("titi"))));
 
         final FreeStyleBuild build2 = build(project, Result.SUCCESS);
         assertTrue(build2.getWorkspace().child("titi").exists());
@@ -2621,7 +2621,7 @@ public class GitSCMTest extends AbstractGitTestCase {
             /* Older git versions have unexpected behaviors with sparse checkout */
             return;
         }
-        FreeStyleProject project = setupProject("master", Lists.newArrayList(new SparseCheckoutPath("titi")));
+        FreeStyleProject project = setupProject("master", Collections.singletonList(new SparseCheckoutPath("titi")));
 
         // run build first to create workspace
         final String commitFile1 = "toto/commitFile1";
@@ -2651,7 +2651,7 @@ public class GitSCMTest extends AbstractGitTestCase {
             /* Older git versions have unexpected behaviors with sparse checkout */
             return;
         }
-        FreeStyleProject project = setupProject("master", Lists.newArrayList(new SparseCheckoutPath("titi")));
+        FreeStyleProject project = setupProject("master", Collections.singletonList(new SparseCheckoutPath("titi")));
         project.setAssignedLabel(rule.createSlave().getSelfLabel());
 
         // run build first to create workspace
@@ -3100,6 +3100,90 @@ public class GitSCMTest extends AbstractGitTestCase {
        verify(build, times(1)).getActions(BuildData.class);
     }
 
+    @Test
+    public void testBuildEnvironmentVariablesSingleRemote() throws Exception {
+        ObjectId sha1 = ObjectId.fromString("2cec153f34767f7638378735dc2b907ed251a67d");
+
+        List<Branch> branchList = new ArrayList<>();
+        Branch branch = new Branch("origin/master", sha1);
+        branchList.add(branch);
+
+        Revision revision = new Revision(sha1, branchList);
+
+        /* BuildData mock that will use the Revision */
+        BuildData buildData = Mockito.mock(BuildData.class);
+        Mockito.when(buildData.getLastBuiltRevision()).thenReturn(revision);
+        Mockito.when(buildData.hasBeenReferenced(anyString())).thenReturn(true);
+
+        /* List of build data that will be returned by the mocked BuildData */
+        List<BuildData> buildDataList = new ArrayList<>();
+        buildDataList.add(buildData);
+
+        /* Run mock which returns the buildDataList */
+        Run<?, ?> build = Mockito.mock(Run.class);
+        Mockito.when(build.getActions(BuildData.class)).thenReturn(buildDataList);
+
+        FreeStyleProject project = setupSimpleProject("*/*");
+        GitSCM scm = (GitSCM) project.getScm();
+
+        Map<String, String> env = new HashMap<>();
+        scm.buildEnvironment(build, env);
+
+        assertEquals("GIT_BRANCH is invalid", "origin/master", env.get("GIT_BRANCH"));
+        assertEquals("GIT_LOCAL_BRANCH is invalid", null, env.get("GIT_LOCAL_BRANCH"));
+        assertEquals("GIT_COMMIT is invalid", sha1.getName(), env.get("GIT_COMMIT"));
+        assertEquals("GIT_URL is invalid", testRepo.gitDir.getAbsolutePath(), env.get("GIT_URL"));
+        assertNull("GIT_URL_1 should not have been set", env.get("GIT_URL_1"));
+    }
+
+    @Test
+    public void testBuildEnvironmentVariablesMultipleRemotes() throws Exception {
+        ObjectId sha1 = ObjectId.fromString("2cec153f34767f7638378735dc2b907ed251a67d");
+
+        List<Branch> branchList = new ArrayList<>();
+        Branch branch = new Branch("origin/master", sha1);
+        branchList.add(branch);
+
+        Revision revision = new Revision(sha1, branchList);
+
+        /* BuildData mock that will use the Revision */
+        BuildData buildData = Mockito.mock(BuildData.class);
+        Mockito.when(buildData.getLastBuiltRevision()).thenReturn(revision);
+        Mockito.when(buildData.hasBeenReferenced(anyString())).thenReturn(true);
+
+        /* List of build data that will be returned by the mocked BuildData */
+        List<BuildData> buildDataList = new ArrayList<>();
+        buildDataList.add(buildData);
+
+        /* Run mock which returns the buildDataList */
+        Run<?, ?> build = Mockito.mock(Run.class);
+        Mockito.when(build.getActions(BuildData.class)).thenReturn(buildDataList);
+
+        FreeStyleProject project = setupSimpleProject("*/*");
+        /* Update project so we have two remote configs */
+        List<UserRemoteConfig> userRemoteConfigs = new ArrayList<>();
+        userRemoteConfigs.add(new UserRemoteConfig(testRepo.gitDir.getAbsolutePath(), "origin", "", null));
+        final String upstreamRepoUrl = "/upstream/url";
+        userRemoteConfigs.add(new UserRemoteConfig(upstreamRepoUrl, "upstream", "", null));
+        GitSCM scm = new GitSCM(
+                userRemoteConfigs,
+                Collections.singletonList(new BranchSpec(branch.getName())),
+                null, null,
+                Collections.<GitSCMExtension>emptyList());
+        project.setScm(scm);
+
+        Map<String, String> env = new HashMap<>();
+        scm.buildEnvironment(build, env);
+
+        assertEquals("GIT_BRANCH is invalid", "origin/master", env.get("GIT_BRANCH"));
+        assertEquals("GIT_LOCAL_BRANCH is invalid", null, env.get("GIT_LOCAL_BRANCH"));
+        assertEquals("GIT_COMMIT is invalid", sha1.getName(), env.get("GIT_COMMIT"));
+        assertEquals("GIT_URL is invalid", testRepo.gitDir.getAbsolutePath(), env.get("GIT_URL"));
+        assertEquals("GIT_URL_1 is invalid", testRepo.gitDir.getAbsolutePath(), env.get("GIT_URL_1"));
+        assertEquals("GIT_URL_2 is invalid", upstreamRepoUrl, env.get("GIT_URL_2"));
+        assertNull("GIT_URL_3 should not have been set", env.get("GIT_URL_3"));
+    }
+
     @Issue("JENKINS-38241")
     @Test
     public void testCommitMessageIsPrintedToLogs() throws Exception {
@@ -3108,17 +3192,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         sampleRepo.git("commit", "--all", "--message=test commit");
         FreeStyleProject p = setupSimpleProject("master");
         Run<?,?> run = rule.buildAndAssertSuccess(p);
-        TaskListener mockListener = Mockito.mock(TaskListener.class);
-        Mockito.when(mockListener.getLogger()).thenReturn(Mockito.spy(StreamTaskListener.fromStdout().getLogger()));
-
-        p.getScm().checkout(run, new Launcher.LocalLauncher(listener),
-                new FilePath(run.getRootDir()).child("tmp-" + "master"),
-                mockListener, null, SCMRevisionState.NONE);
-
-        ArgumentCaptor<String> logCaptor = ArgumentCaptor.forClass(String.class);
-        verify(mockListener.getLogger(), atLeastOnce()).println(logCaptor.capture());
-        List<String> values = logCaptor.getAllValues();
-        assertThat(values, hasItem("Commit message: \"test commit\""));
+        rule.waitForMessage("Commit message: \"test commit\"", run);
     }
 
     /**
