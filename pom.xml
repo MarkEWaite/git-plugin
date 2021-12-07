@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>4.29</version>
+    <version>4.31</version>
     <relativePath />
   </parent>
 
@@ -19,7 +19,7 @@
   <artifactId>git</artifactId>
   <version>${revision}${changelist}</version>
   <packaging>hpi</packaging>
-  <name>Jenkins Git plugin</name>
+  <name>Git plugin</name>
   <description>Integrates Jenkins with Git SCM</description>
   <url>https://github.com/jenkinsci/git-plugin/blob/master/README.adoc</url>
   <inceptionYear>2007</inceptionYear>
@@ -58,9 +58,16 @@
           <dependency>
             <groupId>com.github.spotbugs</groupId>
             <artifactId>spotbugs</artifactId>
-            <version>4.4.2</version>
+            <version>4.5.0</version>
           </dependency>
         </dependencies>
+      </plugin>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <forkCount>0.8C</forkCount>
+          <reuseForks>true</reuseForks>
+        </configuration>
       </plugin>
     </plugins>
   </build>
@@ -164,7 +171,7 @@
     <dependency>
       <groupId>nl.jqno.equalsverifier</groupId>
       <artifactId>equalsverifier</artifactId>
-      <version>3.7.2</version>
+      <version>3.8</version>
       <scope>test</scope>
     </dependency>
     <!--Credential Binding Plugin-->
@@ -235,7 +242,7 @@
     <dependency>
       <groupId>com.github.spotbugs</groupId>
       <artifactId>spotbugs-annotations</artifactId>
-      <version>4.4.2</version>
+      <version>4.5.0</version>
       <exclusions> <!-- prevent inclusion in hpi as a transient dependency -->
         <exclusion>
           <groupId>com.google.code.findbugs</groupId>
@@ -267,7 +274,7 @@
       <dependency>
         <groupId>io.jenkins.tools.bom</groupId>
         <artifactId>bom-2.289.x</artifactId>
-        <version>987.v4ade2e49fe70</version>
+        <version>1008.vb9e22885c9cf</version>
         <scope>import</scope>
         <type>pom</type>
       </dependency>
