@@ -261,7 +261,7 @@ public class CredentialsUserRemoteConfigTest {
         store.save();
 
         WorkflowJob p = createProjectWithCredential();
-        WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        WorkflowRun b = r.buildAndAssertSuccess(p);
         r.waitForMessage("using credential " + credential, b);
     }
 
@@ -271,8 +271,15 @@ public class CredentialsUserRemoteConfigTest {
         store.addCredentials(Domain.global(), createCredential(CredentialsScope.GLOBAL, "other"));
         store.save();
 
-        WorkflowJob p = createProjectWithCredential();
-        WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition(
+                "node {\n"
+                        + "  checkout(\n"
+                        + "    [$class: 'GitSCM', \n"
+                        + "      userRemoteConfigs: [[credentialsId: 'github', url: $/" + sampleRepo + "/$]]]\n"
+                        + "  )"
+                        + "}", true));
+        WorkflowRun b = r.buildAndAssertSuccess(p);
         r.waitForMessage("Warning: CredentialId \"" + credential + "\" could not be found", b);
     }
 
@@ -282,24 +289,49 @@ public class CredentialsUserRemoteConfigTest {
         store.addCredentials(Domain.global(), createCredential(CredentialsScope.SYSTEM, "github"));
         store.save();
 
-        WorkflowJob p = createProjectWithCredential();
-        WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition(
+                "node {\n"
+                        + "  checkout(\n"
+                        + "    [$class: 'GitSCM', \n"
+                        + "      userRemoteConfigs: [[credentialsId: 'github', url: $/" + sampleRepo + "/$]]]\n"
+                        + "  )"
+                        + "}", true));
+        WorkflowRun b = r.buildAndAssertSuccess(p);
         r.waitForMessage("Warning: CredentialId \"" + credential + "\" could not be found", b);
     }
 
     @Issue("JENKINS-30515")
     @Test
     public void checkoutWithNoCredentialsStoredButUsed() throws Exception {
-        WorkflowJob p = createProjectWithCredential();
-        WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        sampleRepo.init();
+
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition(
+                "node {\n"
+                        + "  checkout(\n"
+                        + "    [$class: 'GitSCM', \n"
+                        + "      userRemoteConfigs: [[credentialsId: 'github', url: $/" + sampleRepo + "/$]]]\n"
+                        + "  )"
+                        + "}", true));
+        WorkflowRun b = r.buildAndAssertSuccess(p);
         r.waitForMessage("Warning: CredentialId \"" + credential + "\" could not be found", b);
     }
 
     @Issue("JENKINS-30515")
     @Test
     public void checkoutWithNoCredentialsSpecified() throws Exception {
-        WorkflowJob p = createProject(false);
-        WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        sampleRepo.init();
+
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition(
+                "node {\n"
+                        + "  checkout(\n"
+                        + "    [$class: 'GitSCM', \n"
+                        + "      userRemoteConfigs: [[url: $/" + sampleRepo + "/$]]]\n"
+                        + "  )"
+                        + "}", true));
+        WorkflowRun b = r.buildAndAssertSuccess(p);
         r.waitForMessage("No credentials specified", b);
     }
 
