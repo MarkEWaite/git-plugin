@@ -286,7 +286,7 @@ public class CredentialsUserRemoteConfigTest {
     @Issue("JENKINS-30515")
     @Test
     public void checkoutWithInvalidCredentials() throws Exception {
-        store.addCredentials(Domain.global(), createCredential(CredentialsScope.SYSTEM, "github"));
+        store.addCredentials(Domain.global(), createCredential(CredentialsScope.SYSTEM, "system-credential"));
         store.save();
 
         WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
@@ -294,11 +294,11 @@ public class CredentialsUserRemoteConfigTest {
                 "node {\n"
                         + "  checkout(\n"
                         + "    [$class: 'GitSCM', \n"
-                        + "      userRemoteConfigs: [[credentialsId: 'github', url: $/" + sampleRepo + "/$]]]\n"
+                        + "      userRemoteConfigs: [[credentialsId: 'system-credential', url: $/" + sampleRepo + "/$]]]\n"
                         + "  )"
                         + "}", true));
         WorkflowRun b = r.buildAndAssertSuccess(p);
-        r.waitForMessage("Warning: CredentialId \"" + credential + "\" could not be found", b);
+        r.waitForMessage("Warning: CredentialId \"system-credential\" could not be found", b);
     }
 
     @Issue("JENKINS-30515")
