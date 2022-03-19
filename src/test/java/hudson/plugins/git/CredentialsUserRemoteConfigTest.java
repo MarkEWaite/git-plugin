@@ -276,7 +276,7 @@ public class CredentialsUserRemoteConfigTest {
                 "node {\n"
                         + "  checkout(\n"
                         + "    [$class: 'GitSCM', \n"
-                        + "      userRemoteConfigs: [[credentialsId: 'github', url: $/" + sampleRepo + "/$]]]\n"
+                        + "      userRemoteConfigs: [[credentialsId: '" + credential + "', url: $/" + sampleRepo + "/$]]]\n"
                         + "  )"
                         + "}", true));
         WorkflowRun b = r.buildAndAssertSuccess(p);
