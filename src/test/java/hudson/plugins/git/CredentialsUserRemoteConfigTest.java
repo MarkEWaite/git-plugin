@@ -36,7 +36,7 @@ public class CredentialsUserRemoteConfigTest {
     private CredentialsStore store = null;
     private boolean useSymbolForGitSCM = true;
     private Random random = new Random();
-    private String credential = "undefined";
+    private String credential = "undefined-credential";
 
     @Before
     public void enableSystemCredentialsProvider() {
@@ -271,6 +271,41 @@ public class CredentialsUserRemoteConfigTest {
         store.addCredentials(Domain.global(), createCredential(CredentialsScope.GLOBAL, "other"));
         store.save();
 
+        String notOtherCredential = "not-other-" + (100 + random.nextInt(900));
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition(
+                "node {\n"
+                        + "  checkout(\n"
+                        + "    [$class: 'GitSCM', \n"
+                        + "      userRemoteConfigs: [[credentialsId: '" + notOtherCredential + "', url: $/" + sampleRepo + "/$]]]\n"
+                        + "  )"
+                        + "}", true));
+        WorkflowRun b = r.buildAndAssertSuccess(p);
+        r.waitForMessage("Warning: CredentialId \"" + notOtherCredential + "\" could not be found", b);
+    }
+
+    @Issue("JENKINS-30515")
+    @Test
+    public void checkoutWithInvalidCredentials() throws Exception {
+        String systemCredential = "system-credential-" + (100 + random.nextInt(900));
+        store.addCredentials(Domain.global(), createCredential(CredentialsScope.SYSTEM, systemCredential));
+        store.save();
+
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition(
+                "node {\n"
+                        + "  checkout(\n"
+                        + "    [$class: 'GitSCM', \n"
+                        + "      userRemoteConfigs: [[credentialsId: '" + systemCredential + "', url: $/" + sampleRepo + "/$]]]\n"
+                        + "  )"
+                        + "}", true));
+        WorkflowRun b = r.buildAndAssertSuccess(p);
+        r.waitForMessage("Warning: CredentialId \"" + systemCredential + "\" could not be found", b);
+    }
+
+    @Issue("JENKINS-30515")
+    @Test
+    public void checkoutWithNoCredentialsStoredButUsed() throws Exception {
         WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
                 "node {\n"
@@ -285,44 +320,7 @@ public class CredentialsUserRemoteConfigTest {
 
     @Issue("JENKINS-30515")
     @Test
-    public void checkoutWithInvalidCredentials() throws Exception {
-        store.addCredentials(Domain.global(), createCredential(CredentialsScope.SYSTEM, "system-credential"));
-        store.save();
-
-        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                "node {\n"
-                        + "  checkout(\n"
-                        + "    [$class: 'GitSCM', \n"
-                        + "      userRemoteConfigs: [[credentialsId: 'system-credential', url: $/" + sampleRepo + "/$]]]\n"
-                        + "  )"
-                        + "}", true));
-        WorkflowRun b = r.buildAndAssertSuccess(p);
-        r.waitForMessage("Warning: CredentialId \"system-credential\" could not be found", b);
-    }
-
-    @Issue("JENKINS-30515")
-    @Test
-    public void checkoutWithNoCredentialsStoredButUsed() throws Exception {
-        sampleRepo.init();
-
-        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition(
-                "node {\n"
-                        + "  checkout(\n"
-                        + "    [$class: 'GitSCM', \n"
-                        + "      userRemoteConfigs: [[credentialsId: 'github', url: $/" + sampleRepo + "/$]]]\n"
-                        + "  )"
-                        + "}", true));
-        WorkflowRun b = r.buildAndAssertSuccess(p);
-        r.waitForMessage("Warning: CredentialId \"" + credential + "\" could not be found", b);
-    }
-
-    @Issue("JENKINS-30515")
-    @Test
     public void checkoutWithNoCredentialsSpecified() throws Exception {
-        sampleRepo.init();
-
         WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
                 "node {\n"
