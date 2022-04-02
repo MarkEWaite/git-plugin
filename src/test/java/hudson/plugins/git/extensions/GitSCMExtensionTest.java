@@ -38,7 +38,7 @@ public abstract class GitSCMExtensionTest {
 	@Rule
 	public TemporaryFolder tmp = new TemporaryFolder();
 
-	static String defaultBranchName = "mast" + "er"; // Intentionally split string
+	public static String defaultBranchName = "mast" + "er"; // Intentionally split string
 
 	/**
 	 * Determine the global default branch name.

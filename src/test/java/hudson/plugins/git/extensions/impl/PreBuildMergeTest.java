@@ -56,9 +56,9 @@ public class PreBuildMergeTest extends GitSCMExtensionTest
 
         // pretend we merged and published it successfully
         repo.git.deleteBranch("integration");
-        repo.git.checkoutBranch("integration", "master");
+        repo.git.checkoutBranch("integration", defaultBranchName);
         repo.commit(MASTER_FILE, "new content on integration branch", repo.johnDoe, repo.johnDoe, "Commit which should fail!");
-        repo.git.checkout().ref("master").execute();
+        repo.git.checkout().ref(defaultBranchName).execute();
 
         // make a new commit in master branch, this commit should not merge cleanly!
         assertFalse("SCM polling should not detect any more changes after build", project.poll(listener).hasChanges());

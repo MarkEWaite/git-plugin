@@ -30,6 +30,7 @@ import java.util.logging.Logger;
 
 import hudson.plugins.git.GitSCM;
 import org.apache.commons.io.FileUtils;
+import org.jenkinsci.plugins.gitclient.Git;
 import org.jenkinsci.plugins.gitclient.GitClient;
 import org.jenkinsci.plugins.gitclient.TestCliGitAPIImpl;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
@@ -38,6 +39,7 @@ import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -51,6 +53,8 @@ import hudson.model.Result;
 import hudson.model.TaskListener;
 import hudson.util.LogTaskListener;
 
+import jenkins.plugins.git.CliGitCommand;
+
 public class PruneStaleTagPipelineTest {
 
     @Rule
@@ -59,6 +63,28 @@ public class PruneStaleTagPipelineTest {
     public JenkinsRule j = new JenkinsRule();
 
     private TaskListener listener;
+
+    static String defaultBranchName = "mast" + "er"; // Intentionally split string
+
+    /**
+     * Determine the global default branch name.
+     * Command line git is moving towards more inclusive naming.
+     * Git 2.32.0 honors the configuration variable `init.defaultBranch` and uses it for the name of the initial branch.
+     * This method reads the global configuration and uses it to set the value of `defaultBranchName`.
+     */
+    @BeforeClass
+    public static void computeDefaultBranchName() throws Exception {
+        File configDir = java.nio.file.Files.createTempDirectory("readGitConfig").toFile();
+        CliGitCommand getDefaultBranchNameCmd = new CliGitCommand(Git.with(TaskListener.NULL, new hudson.EnvVars()).in(configDir).using("git").getClient());
+        String[] output = getDefaultBranchNameCmd.runWithoutAssert("config", "--get", "init.defaultBranch");
+        for (String s : output) {
+            String result = s.trim();
+            if (result != null && !result.isEmpty()) {
+                defaultBranchName = result;
+            }
+        }
+       Assert.assertTrue("Failed to delete temporary readGitConfig directory", configDir.delete());
+    }
 
     @Before
     public void setup() throws Exception {
@@ -94,7 +120,7 @@ public class PruneStaleTagPipelineTest {
         job.setDefinition(new CpsFlowDefinition(""
                 + "  node {\n"
                 + "    checkout([$class: 'GitSCM',\n"
-                + "             branches: [[name: '*/master']],\n"
+                + "             branches: [[name: '*/" + defaultBranchName + "']],\n"
                 + "             extensions: [pruneTags(true)],\n"
                 + "             userRemoteConfigs: [[url: '" + remoteURL + "']]\n"
                 + "    ])\n"
@@ -106,7 +132,7 @@ public class PruneStaleTagPipelineTest {
         WorkflowRun r = job.scheduleBuild2(0).waitForStart();
         j.assertBuildStatus(Result.SUCCESS, j.waitForCompletion(r));
         // Check JENKINS-66651 - token macro expansion in Pipeline
-        j.waitForMessage("token macro expanded branch is remotes/origin/master", r); // Unexpected but current behavior
+        j.waitForMessage("token macro expanded branch is remotes/origin/" + defaultBranchName, r); // Unexpected but current behavior
 
         // remove tag on remote, tag remains on local cloned repository
         remoteClient.deleteTag(tagName);
