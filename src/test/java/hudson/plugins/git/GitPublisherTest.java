@@ -139,7 +139,7 @@ public class GitPublisherTest extends AbstractGitProject {
         GitTool tool = new JGitTool(Collections.<ToolProperty<?>>emptyList());
         jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool);
 
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject();
 
         // Store a cache size for the repository so that git tool chooser will choose JGit
         Random random = new Random();
@@ -235,7 +235,7 @@ public class GitPublisherTest extends AbstractGitProject {
 
     @Test
     public void testMergeAndPush() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject();
 
         GitSCM scm = new GitSCM(
                 remoteConfigs(),
@@ -271,7 +271,7 @@ public class GitPublisherTest extends AbstractGitProject {
     @Issue("JENKINS-12402")
     @Test
     public void testMergeAndPushFF() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject();
 
         GitSCM scm = new GitSCM(
                 remoteConfigs(),
@@ -297,7 +297,7 @@ public class GitPublisherTest extends AbstractGitProject {
         assertEquals("the integration branch should be at HEAD", shaIntegration, testGitClient.revParse(Constants.HEAD).name());
 
         // create a new branch and build, this results in a fast-forward merge
-        testGitClient.checkout("master");
+        testGitClient.checkout(defaultBranchName);
         ObjectId master = testGitClient.revParse("HEAD");
         testGitClient.branch("branch1");
         testGitClient.checkout("branch1");
@@ -324,7 +324,7 @@ public class GitPublisherTest extends AbstractGitProject {
 
         // create a second branch off of master, so as to force a merge commit and to test
         // that --ff gracefully falls back to a merge commit
-        testGitClient.checkout("master");
+        testGitClient.checkout(defaultBranchName);
         testGitClient.branch("branch2");
         testGitClient.checkout("branch2");
         final String commitFile2 = "commitFile2";
@@ -355,7 +355,7 @@ public class GitPublisherTest extends AbstractGitProject {
     @Issue("JENKINS-12402")
     @Test
     public void testMergeAndPushNoFF() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject();
 
         GitSCM scm = new GitSCM(
                 remoteConfigs(),
@@ -382,7 +382,7 @@ public class GitPublisherTest extends AbstractGitProject {
 
         // create a new branch and build
         // This would be a fast-forward merge, but we're calling for --no-ff and that should work
-        testGitClient.checkout("master");
+        testGitClient.checkout(defaultBranchName);
         ObjectId master = testGitClient.revParse("HEAD");
         testGitClient.branch("branch1");
         testGitClient.checkout("branch1");
@@ -408,7 +408,7 @@ public class GitPublisherTest extends AbstractGitProject {
         assertEquals("Integration should have branch1 as a parent",revList.get(0).name(),shaBranch1);
 
         // create a second branch off of master, so as to test that --no-ff is published as expected
-        testGitClient.checkout("master");
+        testGitClient.checkout(defaultBranchName);
         testGitClient.branch("branch2");
         testGitClient.checkout("branch2");
         final String commitFile2 = "commitFile2";
@@ -443,7 +443,7 @@ public class GitPublisherTest extends AbstractGitProject {
     @Issue("JENKINS-12402")
     @Test
     public void testMergeAndPushFFOnly() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject();
 
         GitSCM scm = new GitSCM(
                 remoteConfigs(),
@@ -470,7 +470,7 @@ public class GitPublisherTest extends AbstractGitProject {
 
         // create a new branch and build
         // This merge can work with --ff-only
-        testGitClient.checkout("master");
+        testGitClient.checkout(defaultBranchName);
         ObjectId master = testGitClient.revParse("HEAD");
         testGitClient.branch("branch1");
         testGitClient.checkout("branch1");
@@ -498,7 +498,7 @@ public class GitPublisherTest extends AbstractGitProject {
 
         // create a second branch off of master, so as to force a merge commit
         // but the publish will fail as --ff-only cannot work with a parallel branch
-        testGitClient.checkout("master");
+        testGitClient.checkout(defaultBranchName);
         testGitClient.branch("branch2");
         testGitClient.checkout("branch2");
         final String commitFile2 = "commitFile2";
@@ -519,7 +519,7 @@ public class GitPublisherTest extends AbstractGitProject {
         assertEquals("branch2 should have master as a parent",revList.get(0),master);
         try {
           revList = testGitClient.revList("branch2^2");
-          assertTrue("branch2 should have no other parent than master",false);
+          assertTrue("branch2 should have no other parent than default branch",false);
         } catch (java.lang.NullPointerException err) {
           // expected
         }
@@ -528,7 +528,7 @@ public class GitPublisherTest extends AbstractGitProject {
     @Issue("JENKINS-24786")
     @Test
     public void testPushEnvVarsInRemoteConfig() throws Exception{
-    	FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject();
 
         // create second (bare) test repository as target
         TaskListener listener = StreamTaskListener.fromStderr();
@@ -542,34 +542,34 @@ public class GitPublisherTest extends AbstractGitProject {
 
         GitSCM scm = new GitSCM(
                 remoteRepositories,
-                Collections.singletonList(new BranchSpec("origin/master")),
+                Collections.singletonList(new BranchSpec("origin/" + defaultBranchName)),
                 null, null,
                 Collections.<GitSCMExtension>emptyList());
         project.setScm(scm);
 
         // add parameters for remote repository configuration
         project.addProperty(new ParametersDefinitionProperty(
-        		new StringParameterDefinition("TARGET_URL", testTargetRepo.gitDir.getAbsolutePath()),
-        		new StringParameterDefinition("TARGET_NAME", "target"),
-        		new StringParameterDefinition("TARGET_BRANCH", "master")));
+                new StringParameterDefinition("TARGET_URL", testTargetRepo.gitDir.getAbsolutePath()),
+                new StringParameterDefinition("TARGET_NAME", "target"),
+                new StringParameterDefinition("TARGET_BRANCH", defaultBranchName)));
 
         String tag_name = "test-tag";
         String note_content = "Test Note";
 
         project.getPublishersList().add(new GitPublisher(
-        		Collections.singletonList(new TagToPush("$TARGET_NAME", tag_name, "", false, false)),
+                Collections.singletonList(new TagToPush("$TARGET_NAME", tag_name, "", false, false)),
                 Collections.singletonList(new BranchToPush("$TARGET_NAME", "$TARGET_BRANCH")),
                 Collections.singletonList(new NoteToPush("$TARGET_NAME", note_content, Constants.R_NOTES_COMMITS, false)),
                 true, false, true));
 
         commitNewFile("commitFile");
         testGitClient.tag(tag_name, "Comment");
-        ObjectId expectedCommit = testGitClient.revParse("master");
+        ObjectId expectedCommit = testGitClient.revParse(defaultBranchName);
 
         build(project, Result.SUCCESS, "commitFile");
 
         // check if everything reached target repository
-        assertEquals(expectedCommit, testTargetRepo.git.revParse("master"));
+        assertEquals(expectedCommit, testTargetRepo.git.revParse(defaultBranchName));
         assertTrue(existsTagInRepo(testTargetRepo.git, tag_name));
 
     }
@@ -577,11 +577,11 @@ public class GitPublisherTest extends AbstractGitProject {
     @Issue("JENKINS-24082")
     @Test
     public void testForcePush() throws Exception {
-    	FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject();
 
         GitSCM scm = new GitSCM(
                 remoteConfigs(),
-                Collections.singletonList(new BranchSpec("master")),
+                Collections.singletonList(new BranchSpec(defaultBranchName)),
                 null, null,
                 Collections.<GitSCMExtension>emptyList());
         project.setScm(scm);
@@ -593,9 +593,9 @@ public class GitPublisherTest extends AbstractGitProject {
                 true, true, true);
         project.getPublishersList().add(forcedPublisher);
 
-        // Create a commit on the master branch in the test repo
+        // Create a commit on the default branch in the test repo
         commitNewFile("commitFile");
-        ObjectId masterCommit1 = testGitClient.revParse("master");
+        ObjectId masterCommit1 = testGitClient.revParse(defaultBranchName);
 
         // Checkout and commit to "otherbranch" in the test repo
         testGitClient.branch("otherbranch");
@@ -603,12 +603,12 @@ public class GitPublisherTest extends AbstractGitProject {
         commitNewFile("otherCommitFile");
         ObjectId otherCommit = testGitClient.revParse("otherbranch");
 
-        testGitClient.checkout("master");
+        testGitClient.checkout(defaultBranchName);
         commitNewFile("commitFile2");
-        ObjectId masterCommit2 = testGitClient.revParse("master");
+        ObjectId masterCommit2 = testGitClient.revParse(defaultBranchName);
 
         // masterCommit1 parent of both masterCommit2 and otherCommit
-        assertEquals(masterCommit1, testGitClient.revParse("master^"));
+        assertEquals(masterCommit1, testGitClient.revParse(defaultBranchName + "^"));
         assertEquals(masterCommit1, testGitClient.revParse("otherbranch^"));
 
         // Confirm that otherbranch still points to otherCommit
@@ -626,10 +626,10 @@ public class GitPublisherTest extends AbstractGitProject {
         ObjectId otherCommit2 = testGitClient.revParse("otherbranch");
         assertNotEquals(masterCommit2, otherCommit2);
 
-        // Commit to master branch in test repo
-        testGitClient.checkout("master");
+        // Commit to default branch in test repo
+        testGitClient.checkout(defaultBranchName);
         commitNewFile("commitFile3");
-        ObjectId masterCommit3 = testGitClient.revParse("master");
+        ObjectId masterCommit3 = testGitClient.revParse(defaultBranchName);
 
         // Remove forcedPublisher, add unforcedPublisher
         project.getPublishersList().remove(forcedPublisher);
@@ -653,9 +653,9 @@ public class GitPublisherTest extends AbstractGitProject {
         project.getPublishersList().add(forcedPublisher);
 
         // Commit to master branch in test repo
-        testGitClient.checkout("master");
+        testGitClient.checkout(defaultBranchName);
         commitNewFile("commitFile4");
-        ObjectId masterCommit4 = testGitClient.revParse("master");
+        ObjectId masterCommit4 = testGitClient.revParse(defaultBranchName);
 
         // build will merge and push to "otherbranch" in test repo.
         assertEquals(otherCommit2, testGitClient.revParse("otherbranch"));
@@ -671,7 +671,7 @@ public class GitPublisherTest extends AbstractGitProject {
     @Issue("JENKINS-17769")
     @Test
     public void testMergeAndPushWithSkipTagEnabled() throws Exception {
-      FreeStyleProject project = setupSimpleProject("master");
+      FreeStyleProject project = setupSimpleProject();
 
         GitSCM scm = new GitSCM(
                 remoteConfigs(),
@@ -705,16 +705,16 @@ public class GitPublisherTest extends AbstractGitProject {
 
     @Test
     public void testRebaseBeforePush() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject();
 
         GitSCM scm = new GitSCM(
                 remoteConfigs(),
-                Collections.singletonList(new BranchSpec("master")),
+                Collections.singletonList(new BranchSpec(defaultBranchName)),
                 null, null,
                 Collections.<GitSCMExtension>emptyList());
         project.setScm(scm);
 
-        BranchToPush btp = new BranchToPush("origin", "master");
+        BranchToPush btp = new BranchToPush("origin", defaultBranchName);
         btp.setRebaseBeforePush(true);
 
         GitPublisher rebasedPublisher = new GitPublisher(
@@ -749,7 +749,7 @@ public class GitPublisherTest extends AbstractGitProject {
     @Issue("JENKINS-24786")
     @Test
     public void testMergeAndPushWithCharacteristicEnvVar() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject();
 
         /*
          * JOB_NAME seemed like the more obvious choice, but when run from a 
@@ -775,7 +775,7 @@ public class GitPublisherTest extends AbstractGitProject {
             return;
         }
 
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject();
 
         assertNotNull("Env " + envName + " not set", envValue);
         assertFalse("Env " + envName + " empty", envValue.isEmpty());
@@ -816,7 +816,7 @@ public class GitPublisherTest extends AbstractGitProject {
 
         // create initial commit
         commitNewFile("commitFileBase");
-        ObjectId initialCommit = testGitClient.getHeadRev(testGitDir.getAbsolutePath(), "master");
+        ObjectId initialCommit = testGitClient.getHeadRev(testGitDir.getAbsolutePath(), defaultBranchName);
         assertTrue(testGitClient.isCommitInRepo(initialCommit));
 
         // Create branch in the test repo (pulled into the project workspace at build)

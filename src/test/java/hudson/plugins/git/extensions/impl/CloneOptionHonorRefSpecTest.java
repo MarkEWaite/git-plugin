@@ -110,10 +110,10 @@ public class CloneOptionHonorRefSpecTest extends AbstractGitTestCase {
         }
         // Create initial commit
         final String commitFile1 = "commitFile1";
-        commit(commitFile1, johnDoe, "Commit in master branch");
+        commit(commitFile1, johnDoe, "Commit in default branch");
 
         // Create branch and make initial commit
-        git.checkout().ref("master").branch(refSpecExpectedValue).execute();
+        git.checkout().ref(sampleRepo.getDefaultBranchName()).branch(refSpecExpectedValue).execute();
         commit(commitFile1, johnDoe, "Commit in '" + refSpecExpectedValue + "' branch");
 
         // Use the variable reference in the refspec

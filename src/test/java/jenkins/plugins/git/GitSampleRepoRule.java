@@ -34,11 +34,14 @@ import hudson.util.StreamTaskListener;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.scm.impl.mock.AbstractSampleDVCSRepoRule;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.jenkinsci.plugins.gitclient.Git;
+import org.junit.Assert;
 import org.jvnet.hudson.test.JenkinsRule;
 
 /**
@@ -49,6 +52,8 @@ public final class GitSampleRepoRule extends AbstractSampleDVCSRepoRule {
     private static boolean initialized = false;
 
     private static final Logger LOGGER = Logger.getLogger(GitSampleRepoRule.class.getName());
+
+    private String defaultBranchName = "mast" + "er"; // Intentionally split string
 
     protected void before() throws Throwable {
         super.before();
@@ -105,6 +110,26 @@ public final class GitSampleRepoRule extends AbstractSampleDVCSRepoRule {
 
     public String head() throws Exception {
         return new RepositoryBuilder().setWorkTree(sampleRepo).build().resolve(Constants.HEAD).name();
+    }
+
+    /**
+     * Determine the default branch name.
+     * Command line git is moving towards more inclusive naming.
+     * Git 2.32.0 honors the configuration variable `init.defaultBranch` and uses it for the name of the initial branch.
+     * This method reads the global configuration and uses it to set the value of `defaultBranchName`.
+     */
+    public String getDefaultBranchName() throws Exception {
+        CliGitCommand gitCmd = new CliGitCommand(null);
+        File configDir = getRoot();
+        CliGitCommand getDefaultBranchNameCmd = new CliGitCommand(Git.with(TaskListener.NULL, new hudson.EnvVars()).in(configDir).using("git").getClient());
+        String[] output = getDefaultBranchNameCmd.runWithoutAssert("config", "--get", "init.defaultBranch");
+        for (String s : output) {
+            String result = s.trim();
+            if (result != null && !result.isEmpty()) {
+                defaultBranchName = result;
+            }
+        }
+        return defaultBranchName;
     }
 
     public File getRoot() {

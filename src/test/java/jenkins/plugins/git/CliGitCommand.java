@@ -106,19 +106,14 @@ public class CliGitCommand {
         boolean modified = notFound.addAll(Arrays.asList(expectedRegExes));
         Assert.assertTrue("Missing regular expressions in assertion", modified);
         for (String line : output) {
-            for (Iterator<String> iterator = notFound.iterator(); iterator.hasNext();) {
-                String regex = iterator.next();
-                if (line.matches(regex)) {
-                    iterator.remove();
-                }
-            }
+            notFound.removeIf(line::matches);
         }
         if (!notFound.isEmpty()) {
             Assert.fail(Arrays.toString(output) + " did not match all strings in notFound: " + Arrays.toString(expectedRegExes));
         }
     }
 
-    private String[] runWithoutAssert(String... arguments) throws IOException, InterruptedException {
+    public String[] runWithoutAssert(String... arguments) throws IOException, InterruptedException {
         args = new ArgumentListBuilder("git");
         args.add(arguments);
         return run(false);

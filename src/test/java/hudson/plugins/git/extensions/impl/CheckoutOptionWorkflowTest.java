@@ -23,6 +23,7 @@ public class CheckoutOptionWorkflowTest {
                 "node {\n"
                 + "  checkout(\n"
                 + "    [$class: 'GitSCM', extensions: [[$class: 'CheckoutOption', timeout: 1234]],\n"
+                + "      branches: [[name: '" + sampleRepo.getDefaultBranchName() + "']],\n"
                 + "      userRemoteConfigs: [[url: $/" + sampleRepo + "/$]]]\n"
                 + "  )\n"
                 + "  def tokenBranch = tm '${GIT_BRANCH,fullName=false}'\n"
@@ -30,6 +31,6 @@ public class CheckoutOptionWorkflowTest {
                 + "}", true));
         WorkflowRun b = r.buildAndAssertSuccess(p);
         r.waitForMessage("# timeout=1234", b);
-        r.waitForMessage("token macro expanded branch is remotes/origin/master", b); // Unexpected but current behavior
+        r.waitForMessage("token macro expanded branch is " + sampleRepo.getDefaultBranchName(), b);
     }
 }

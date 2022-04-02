@@ -31,6 +31,7 @@ import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Node;
 import hudson.model.Result;
+import hudson.model.TaskListener;
 import hudson.plugins.git.extensions.GitSCMExtension;
 import hudson.plugins.git.extensions.impl.DisableRemotePoll;
 import hudson.plugins.git.extensions.impl.EnforceGitClient;
@@ -49,6 +50,7 @@ import java.util.Collections;
 import java.util.List;
 
 import jenkins.MasterToSlaveFileCallable;
+import jenkins.plugins.git.CliGitCommand;
 import org.eclipse.jgit.lib.Repository;
 
 import org.jenkinsci.plugins.gitclient.Git;
@@ -56,6 +58,7 @@ import org.jenkinsci.plugins.gitclient.JGitTool;
 
 import static org.junit.Assert.assertTrue;
 
+import org.junit.BeforeClass;
 import org.junit.Rule;
 
 import org.jvnet.hudson.test.CaptureEnvironmentBuilder;
@@ -75,6 +78,29 @@ public class AbstractGitProject extends AbstractGitRepository {
     public FlagRule<String> notifyCommitAccessControl =
             new FlagRule<>(() -> GitStatus.NOTIFY_COMMIT_ACCESS_CONTROL, x -> GitStatus.NOTIFY_COMMIT_ACCESS_CONTROL = x);
 
+    static String defaultBranchName = "mast" + "er"; // Intentionally split string
+
+    /**
+     * Determine the global default branch name.
+     * Command line git is moving towards more inclusive naming.
+     * Git 2.32.0 honors the configuration variable `init.defaultBranch` and uses it for the name of the initial branch.
+     * This method reads the global configuration and uses it to set the value of `defaultBranchName`.
+     */
+    @BeforeClass
+    public static void computeDefaultBranchName() throws Exception {
+        File configDir = java.nio.file.Files.createTempDirectory("readGitConfig").toFile();
+        CliGitCommand getDefaultBranchNameCmd = new CliGitCommand(Git.with(TaskListener.NULL, new hudson.EnvVars()).in(configDir).using("git").getClient());
+        String[] output = getDefaultBranchNameCmd.runWithoutAssert("config", "--get", "init.defaultBranch");
+        for (String s : output) {
+            String result = s.trim();
+            if (result != null && !result.isEmpty()) {
+                defaultBranchName = result;
+            }
+        }
+        assertTrue("Failed to delete temporary readGitConfig directory", configDir.delete());
+    }
+>>>>>>> Adapt to inclusive default branch name
+
     protected FreeStyleProject setupProject(List<BranchSpec> branches, boolean authorOrCommitter) throws Exception {
         FreeStyleProject project = jenkins.createFreeStyleProject();
         GitSCM scm = new GitSCM(remoteConfigs(), branches,
@@ -83,6 +109,11 @@ public class AbstractGitProject extends AbstractGitRepository {
         project.setScm(scm);
         project.getBuildersList().add(new CaptureEnvironmentBuilder());
         return project;
+    }
+
+    protected FreeStyleProject setupSimpleProject() throws Exception {
+        String branchString = defaultBranchName;
+        return setupProject(Collections.singletonList(new BranchSpec(branchString)), false);
     }
 
     protected FreeStyleProject setupSimpleProject(String branchString) throws Exception {
@@ -208,11 +239,11 @@ public class AbstractGitProject extends AbstractGitRepository {
 
     protected FreeStyleBuild build(final FreeStyleProject project, final Result expectedResult, final String... expectedNewlyCommittedFiles) throws Exception {
         final FreeStyleBuild build = project.scheduleBuild2(0).get();
-        for (final String expectedNewlyCommittedFile : expectedNewlyCommittedFiles) {
-            assertTrue(expectedNewlyCommittedFile + " file not found in workspace", build.getWorkspace().child(expectedNewlyCommittedFile).exists());
-        }
         if (expectedResult != null) {
             jenkins.assertBuildStatus(expectedResult, build);
+        }
+        for (final String expectedNewlyCommittedFile : expectedNewlyCommittedFiles) {
+            assertTrue(expectedNewlyCommittedFile + " file not found in workspace", build.getWorkspace().child(expectedNewlyCommittedFile).exists());
         }
         return build;
     }

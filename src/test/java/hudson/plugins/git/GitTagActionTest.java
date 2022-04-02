@@ -87,6 +87,7 @@ public class GitTagActionTest {
     private static final String INITIAL_COMMIT_MESSAGE = "init" + TAG_SUFFIX + "-" + random.nextInt(10000);
     private static final String ADDED_COMMIT_MESSAGE_BASE = "added" + TAG_SUFFIX;
     private static String sampleRepoHead = null;
+    private static String defaultBranchName = null;
     private static DescriptorImpl gitSCMDescriptor = null;
 
     @BeforeClass
@@ -115,16 +116,17 @@ public class GitTagActionTest {
         sampleRepo.write("file", INITIAL_COMMIT_MESSAGE);
         sampleRepo.git("commit", "--all", "--message=" + INITIAL_COMMIT_MESSAGE);
         sampleRepoHead = sampleRepo.head();
+        defaultBranchName = sampleRepo.getDefaultBranchName();
         List<UserRemoteConfig> remotes = new ArrayList<>();
-        String refSpec = "+refs/heads/master:refs/remotes/origin/master";
+        String refSpec = "+refs/heads/" + defaultBranchName + ":refs/remotes/origin/" + defaultBranchName;
         remotes.add(new UserRemoteConfig(sampleRepo.fileUrl(), "origin", refSpec, ""));
         GitSCM scm = new GitSCM(
                 remotes,
-                Collections.singletonList(new BranchSpec("origin/master")),
+                Collections.singletonList(new BranchSpec("origin/" + defaultBranchName)),
                 null,
                 chooseGitImplementation(), // Both git implementations should work, choose randomly
                 Collections.<GitSCMExtension>emptyList());
-        scm.getExtensions().add(new LocalBranch("master"));
+        scm.getExtensions().add(new LocalBranch(defaultBranchName));
         p = r.createFreeStyleProject();
         p.setScm(scm);
 
@@ -190,10 +192,10 @@ public class GitTagActionTest {
         String commitMessage = message == null ? ADDED_COMMIT_MESSAGE_BASE + "-" + messageCounter++ : message;
         sampleRepo.write("file", message);
         sampleRepo.git("commit", "--all", "--message=" + commitMessage);
-        List<Branch> masterBranchList = new ArrayList<>();
+        List<Branch> defaultBranchList = new ArrayList<>();
         ObjectId tagObjectId = ObjectId.fromString(sampleRepo.head());
-        masterBranchList.add(new Branch("master", tagObjectId));
-        Revision tagRevision = new Revision(tagObjectId, masterBranchList);
+        defaultBranchList.add(new Branch(defaultBranchName, tagObjectId));
+        Revision tagRevision = new Revision(tagObjectId, defaultBranchList);
 
         /* Run the freestyle project and compute its workspace FilePath */
         Run<?, ?> tagRun = r.buildAndAssertSuccess(p);
@@ -216,25 +218,25 @@ public class GitTagActionTest {
         assertThat(stringWriter.toString(), containsString(INITIAL_COMMIT_MESSAGE));
         assertThat(stringWriter.toString(), containsString(commitMessage));
 
-        /* Fail if master branch is not defined in the workspace */
+        /* Fail if default branch is not defined in the workspace */
         assertThat(workspaceGitClient.getRemoteUrl("origin"), is(sampleRepo.fileUrl().replace("file:/", "file:///")));
         Set<Branch> branches = workspaceGitClient.getBranches();
         if (branches.isEmpty()) {
             /* Should not be required since the LocalBranch extension was enabled */
-            workspaceGitClient.branch("master");
+            workspaceGitClient.branch(defaultBranchName);
             branches = workspaceGitClient.getBranches();
             assertThat(branches, is(not(empty())));
         }
-        boolean foundMasterBranch = false;
+        boolean foundDefaultBranch = false;
         String lastBranchName = null;
         for (Branch branch : branches) {
             lastBranchName = branch.getName();
-            assertThat(lastBranchName, endsWith("master"));
-            if (lastBranchName.equals("master")) {
-                foundMasterBranch = true;
+            assertThat(lastBranchName, endsWith(defaultBranchName));
+            if (lastBranchName.equals(defaultBranchName)) {
+                foundDefaultBranch = true;
             }
         }
-        assertTrue("master branch not found, last branch name was " + lastBranchName, foundMasterBranch);
+        assertTrue("default branch not found, last branch name was " + lastBranchName, foundDefaultBranch);
 
         /* Create the GitTagAction */
         GitTagAction tagAction;

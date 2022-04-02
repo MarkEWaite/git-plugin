@@ -55,6 +55,7 @@ public class CredentialsUserRemoteConfigTest {
                 "node {\n"
                         + "  checkout(\n"
                         + "    [$class: 'GitSCM', \n"
+                        + "      branches: [[name: '" + sampleRepo.getDefaultBranchName() + "']],\n"
                         + "      userRemoteConfigs: [[credentialsId: 'github', url: $/" + sampleRepo + "/$]]]\n"
                         + "  )"
                         + "}", true));
@@ -74,6 +75,7 @@ public class CredentialsUserRemoteConfigTest {
                 "node {\n"
                         + "  checkout(\n"
                         + "    [$class: 'GitSCM', \n"
+                        + "      branches: [[name: '" + sampleRepo.getDefaultBranchName() + "']],\n"
                         + "      userRemoteConfigs: [[credentialsId: 'github', url: $/" + sampleRepo + "/$]]]\n"
                         + "  )"
                         + "}", true));
@@ -93,6 +95,7 @@ public class CredentialsUserRemoteConfigTest {
                 "node {\n"
                         + "  checkout(\n"
                         + "    [$class: 'GitSCM', \n"
+                        + "      branches: [[name: '" + sampleRepo.getDefaultBranchName() + "']],\n"
                         + "      userRemoteConfigs: [[credentialsId: 'github', url: $/" + sampleRepo + "/$]]]\n"
                         + "  )"
                         + "}", true));
@@ -110,6 +113,7 @@ public class CredentialsUserRemoteConfigTest {
                 "node {\n"
                         + "  checkout(\n"
                         + "    [$class: 'GitSCM', \n"
+                        + "      branches: [[name: '" + sampleRepo.getDefaultBranchName() + "']],\n"
                         + "      userRemoteConfigs: [[credentialsId: 'github', url: $/" + sampleRepo + "/$]]]\n"
                         + "  )"
                         + "}", true));
@@ -127,6 +131,7 @@ public class CredentialsUserRemoteConfigTest {
                 "node {\n"
                         + "  checkout(\n"
                         + "    [$class: 'GitSCM', \n"
+                        + "      branches: [[name: '" + sampleRepo.getDefaultBranchName() + "']],\n"
                         + "      userRemoteConfigs: [[url: $/" + sampleRepo + "/$]]]\n"
                         + "  )"
                         + "}", true));

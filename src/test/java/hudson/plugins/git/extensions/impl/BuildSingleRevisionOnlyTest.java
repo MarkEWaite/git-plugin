@@ -55,7 +55,7 @@ public class BuildSingleRevisionOnlyTest extends AbstractGitTestCase {
     public void testSingleRevision() throws Exception {
         // This is the additional behaviour
         List<BranchSpec> branchSpec = new ArrayList<>();
-        branchSpec.add(new BranchSpec("master"));
+        branchSpec.add(new BranchSpec(sampleRepo.getDefaultBranch()));
         branchSpec.add(new BranchSpec("foo"));
         branchSpec.add(new BranchSpec("bar"));
         FreeStyleProject project = setupProject(branchSpec, false, "",
@@ -64,15 +64,15 @@ public class BuildSingleRevisionOnlyTest extends AbstractGitTestCase {
 
         ((GitSCM) project.getScm()).getExtensions().add(new BuildSingleRevisionOnly());
         final String commitFile = "commitFile1";
-        // create the initial master commit
-        commit(commitFile, johnDoe, "Initial commit in master");
+        // create the initial commit on the default branch
+        commit(commitFile, johnDoe, "Initial commit on default branch");
 
         // create additional branches and commits
         git.branch("foo");
         git.branch("bar");
-        git.checkoutBranch("foo", "master");
+        git.checkoutBranch("foo", sampleRepo.getDefaultBranch());
         commit(commitFile, johnDoe, "Commit in foo");
-        git.checkoutBranch("bar", "master");
+        git.checkoutBranch("bar", sampleRepo.getDefaultBranch());
         commit(commitFile, johnDoe, "Commit in bar");
 
         final FreeStyleBuild build = build(project, Result.SUCCESS, commitFile);
@@ -87,7 +87,7 @@ public class BuildSingleRevisionOnlyTest extends AbstractGitTestCase {
     public void testMultiRevision() throws Exception {
         // This is the old and now default behaviour
         List<BranchSpec> branchSpec = new ArrayList<>();
-        branchSpec.add(new BranchSpec("master"));
+        branchSpec.add(new BranchSpec(sampleRepo.getDefaultBranch()));
         branchSpec.add(new BranchSpec("foo"));
         branchSpec.add(new BranchSpec("bar"));
         FreeStyleProject project = setupProject(branchSpec, false, "",
@@ -95,15 +95,15 @@ public class BuildSingleRevisionOnlyTest extends AbstractGitTestCase {
                 "", false, "");
 
         final String commitFile = "commitFile1";
-        // create the initial master commit
-        commit(commitFile, johnDoe, "Initial commit in master");
+        // create the initial commit on default branch
+        commit(commitFile, johnDoe, "Initial commit on default branch");
 
         // create additional branches and commits
         git.branch("foo");
         git.branch("bar");
-        git.checkoutBranch("foo", "master");
+        git.checkoutBranch("foo", sampleRepo.getDefaultBranch());
         commit(commitFile, johnDoe, "Commit in foo");
-        git.checkoutBranch("bar", "master");
+        git.checkoutBranch("bar", sampleRepo.getDefaultBranch());
         commit(commitFile, johnDoe, "Commit in bar");
 
         final FreeStyleBuild build = build(project, Result.SUCCESS, commitFile);

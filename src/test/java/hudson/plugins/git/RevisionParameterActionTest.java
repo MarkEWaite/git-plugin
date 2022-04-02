@@ -43,7 +43,7 @@ public class RevisionParameterActionTest extends AbstractGitProject {
     @Test
     public void testProvidingRevision() throws Exception {
 
-        FreeStyleProject p1 = setupSimpleProject("master");
+        FreeStyleProject p1 = setupSimpleProject(defaultBranchName);
 
         // create initial commit and then run the build against it:
         final String commitFile1 = "commitFile1";

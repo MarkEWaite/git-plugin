@@ -20,28 +20,28 @@ import org.jenkinsci.plugins.gitclient.GitClient;
 public class TestGitRepo {
 	protected String name; // The name of this repository.
 	protected TaskListener listener;
-	
+
 	/**
-     * This is where the commit commands create a Git repository.
-     */
+	 * This is where the commit commands create a Git repository.
+	 */
 	public File gitDir; // was "workDir"
 	public FilePath gitDirPath; // was "workspace"
 	public GitClient git;
-	
+
 	public final PersonIdent johnDoe = new PersonIdent("John Doe", "john@doe.com");
 	public final PersonIdent janeDoe = new PersonIdent("Jane Doe", "jane@doe.com");
-    
+
     public TestGitRepo(String name, File tmpDir, TaskListener listener) throws IOException, InterruptedException {
 		this.name = name;
 		this.listener = listener;
-		
+
 		EnvVars envVars = new EnvVars();
-		
+
 		gitDir = tmpDir;
 		User john = User.getOrCreateByIdOrFullName(johnDoe.getName());
 		UserProperty johnsMailerProperty = new Mailer.UserProperty(johnDoe.getEmailAddress());
 		john.addProperty(johnsMailerProperty);
-		
+
 		User jane = User.getOrCreateByIdOrFullName(janeDoe.getName());
 		UserProperty janesMailerProperty = new Mailer.UserProperty(janeDoe.getEmailAddress());
 		jane.addProperty(janesMailerProperty);
@@ -53,7 +53,7 @@ public class TestGitRepo {
         // finally: initialize the repo
 		git.init();
 	}
-	
+
     /**
      * Creates a commit in current repo.
      * @param fileName relative path to the file to be committed with default content
