@@ -55,7 +55,7 @@ public class BuildSingleRevisionOnlyTest extends AbstractGitTestCase {
     public void testSingleRevision() throws Exception {
         // This is the additional behaviour
         List<BranchSpec> branchSpec = new ArrayList<>();
-        branchSpec.add(new BranchSpec(sampleRepo.getDefaultBranch()));
+        branchSpec.add(new BranchSpec(sampleRepo.getDefaultBranchName()));
         branchSpec.add(new BranchSpec("foo"));
         branchSpec.add(new BranchSpec("bar"));
         FreeStyleProject project = setupProject(branchSpec, false, "",
@@ -70,9 +70,9 @@ public class BuildSingleRevisionOnlyTest extends AbstractGitTestCase {
         // create additional branches and commits
         git.branch("foo");
         git.branch("bar");
-        git.checkoutBranch("foo", sampleRepo.getDefaultBranch());
+        git.checkoutBranch("foo", sampleRepo.getDefaultBranchName());
         commit(commitFile, johnDoe, "Commit in foo");
-        git.checkoutBranch("bar", sampleRepo.getDefaultBranch());
+        git.checkoutBranch("bar", sampleRepo.getDefaultBranchName());
         commit(commitFile, johnDoe, "Commit in bar");
 
         final FreeStyleBuild build = build(project, Result.SUCCESS, commitFile);
@@ -87,7 +87,7 @@ public class BuildSingleRevisionOnlyTest extends AbstractGitTestCase {
     public void testMultiRevision() throws Exception {
         // This is the old and now default behaviour
         List<BranchSpec> branchSpec = new ArrayList<>();
-        branchSpec.add(new BranchSpec(sampleRepo.getDefaultBranch()));
+        branchSpec.add(new BranchSpec(sampleRepo.getDefaultBranchName()));
         branchSpec.add(new BranchSpec("foo"));
         branchSpec.add(new BranchSpec("bar"));
         FreeStyleProject project = setupProject(branchSpec, false, "",
@@ -101,9 +101,9 @@ public class BuildSingleRevisionOnlyTest extends AbstractGitTestCase {
         // create additional branches and commits
         git.branch("foo");
         git.branch("bar");
-        git.checkoutBranch("foo", sampleRepo.getDefaultBranch());
+        git.checkoutBranch("foo", sampleRepo.getDefaultBranchName());
         commit(commitFile, johnDoe, "Commit in foo");
-        git.checkoutBranch("bar", sampleRepo.getDefaultBranch());
+        git.checkoutBranch("bar", sampleRepo.getDefaultBranchName());
         commit(commitFile, johnDoe, "Commit in bar");
 
         final FreeStyleBuild build = build(project, Result.SUCCESS, commitFile);
