@@ -123,10 +123,19 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     private CredentialsStore store = null;
 
+    private static String defaultBranchName = "";
+
     @BeforeClass
     public static void setGitDefaults() throws Exception {
         CliGitCommand gitCmd = new CliGitCommand(null);
         gitCmd.setDefaults();
+    }
+
+    @Before
+    public void computeDefaultBranchName() throws Exception {
+        if (defaultBranchName.isEmpty()) {
+            defaultBranchName = sampleRepo.getDefaultBranchName();
+        }
     }
 
     @Before
@@ -160,10 +169,10 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testAddGitTagAction() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
         List<UserRemoteConfig> remoteConfigs = GitSCM.createRepoList("https://github.com/jenkinsci/git-plugin", "github");
         project.setScm(new GitSCM(remoteConfigs,
-                Collections.singletonList(new BranchSpec("master")), false, null, null, null, null));
+                                  Collections.singletonList(new BranchSpec(defaultBranchName)), false, null, null, null, null));
 
         GitSCM scm = (GitSCM) project.getScm();
         final DescriptorImpl descriptor = (DescriptorImpl) scm.getDescriptor();
@@ -241,7 +250,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         assertThat("No fingerprint created until first use", page.getElementById("usage-missing"), notNullValue());
         assertThat("No fingerprint created until first use", page.getElementById("usage-present"), nullValue());
 
-        FreeStyleProject project = setupProject("master", credential);
+        FreeStyleProject project = setupProject(defaultBranchName, credential);
 
         fingerprint = CredentialsProvider.getFingerprintOf(credential);
         assertThat("Fingerprint should not be set before first build", fingerprint, nullValue());
@@ -271,7 +280,7 @@ public class GitSCMTest extends AbstractGitTestCase {
      */
     @Test
     public void testBasic() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         // create initial commit and then run the build against it:
         final String commitFile1 = "commitFile1";
@@ -296,8 +305,8 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Test
     @Issue("JENKINS-56176")
     public void testBasicRemotePoll() throws Exception {
-//        FreeStyleProject project = setupProject("master", true, false);
-        FreeStyleProject project = setupProject("master", false, null, null, null, true, null);
+//        FreeStyleProject project = setupProject(defaultBranchName, true, false);
+        FreeStyleProject project = setupProject(defaultBranchName, false, null, null, null, true, null);
         // create initial commit and then run the build against it:
         final String commitFile1 = "commitFile1";
         commit(commitFile1, johnDoe, "Commit number 1");
@@ -323,12 +332,12 @@ public class GitSCMTest extends AbstractGitTestCase {
     }
 
     @Test
-    public void testBranchSpecWithRemotesMaster() throws Exception {
-        FreeStyleProject projectMasterBranch = setupProject("remotes/origin/master", false, null, null, null, true, null);
+    public void testBranchSpecWithRemotesDefaultBranch() throws Exception {
+        FreeStyleProject projectDefaultBranch = setupProject("remotes/origin/" + defaultBranchName, false, null, null, null, true, null);
         // create initial commit and build
         final String commitFile1 = "commitFile1";
         commit(commitFile1, johnDoe, "Commit number 1");
-        build(projectMasterBranch, Result.SUCCESS, commitFile1);
+        build(projectDefaultBranch, Result.SUCCESS, commitFile1);
     }
 
     /**
@@ -346,25 +355,25 @@ public class GitSCMTest extends AbstractGitTestCase {
         repos.add(new UserRemoteConfig(testRepo.gitDir.getAbsolutePath(), "origin", "+refs/heads/foo:refs/remotes/foo", null));
 
         /* Set CloneOption to honor refspec on initial clone */
-        FreeStyleProject projectWithMaster = setupProject(repos, Collections.singletonList(new BranchSpec("master")), null, false, null);
-        CloneOption cloneOptionMaster = new CloneOption(false, null, null);
-        cloneOptionMaster.setHonorRefspec(true);
-        ((GitSCM)projectWithMaster.getScm()).getExtensions().add(cloneOptionMaster);
+        FreeStyleProject projectWithDefaultBranch = setupProject(repos, Collections.singletonList(new BranchSpec(defaultBranchName)), null, false, null);
+        CloneOption cloneOptionDefaultBranch = new CloneOption(false, null, null);
+        cloneOptionDefaultBranch.setHonorRefspec(true);
+        ((GitSCM)projectWithDefaultBranch.getScm()).getExtensions().add(cloneOptionDefaultBranch);
 
         /* Set CloneOption to honor refspec on initial clone */
         FreeStyleProject projectWithFoo = setupProject(repos, Collections.singletonList(new BranchSpec("foo")), null, false, null);
         CloneOption cloneOptionFoo = new CloneOption(false, null, null);
         cloneOptionFoo.setHonorRefspec(true);
-        ((GitSCM)projectWithMaster.getScm()).getExtensions().add(cloneOptionFoo);
+        ((GitSCM)projectWithDefaultBranch.getScm()).getExtensions().add(cloneOptionFoo);
 
         // create initial commit
         final String commitFile1 = "commitFile1";
-        commit(commitFile1, johnDoe, "Commit in master");
+        commit(commitFile1, johnDoe, "Commit in default branch");
         // create branch and make initial commit
-        git.checkout().ref("master").branch("foo").execute();
+        git.checkout().ref(defaultBranchName).branch("foo").execute();
         commit(commitFile1, johnDoe, "Commit in foo");
 
-        build(projectWithMaster, Result.FAILURE);
+        build(projectWithDefaultBranch, Result.FAILURE);
         build(projectWithFoo, Result.SUCCESS, commitFile1);
     }
 
@@ -378,19 +387,19 @@ public class GitSCMTest extends AbstractGitTestCase {
         repos.add(new UserRemoteConfig(testRepo.gitDir.getAbsolutePath(), "origin", "+refs/heads/*:refs/remotes/*", null));
 
         /* Without honor refspec on initial clone */
-        FreeStyleProject projectWithMaster = setupProject(repos, Collections.singletonList(new BranchSpec("master")), null, false, null);
+        FreeStyleProject projectWithDefaultBranch = setupProject(repos, Collections.singletonList(new BranchSpec(defaultBranchName)), null, false, null);
         if (random.nextBoolean()) {
             /* Randomly enable shallow clone, should not alter test assertions */
-            CloneOption cloneOptionMaster = new CloneOption(false, null, null);
-            cloneOptionMaster.setDepth(1);
-            ((GitSCM) projectWithMaster.getScm()).getExtensions().add(cloneOptionMaster);
+            CloneOption cloneOptionDefaultBranch = new CloneOption(false, null, null);
+            cloneOptionDefaultBranch.setDepth(1);
+            ((GitSCM) projectWithDefaultBranch.getScm()).getExtensions().add(cloneOptionDefaultBranch);
         }
 
         // create initial commit
         final String commitFile1 = "commitFile1";
-        commit(commitFile1, johnDoe, "Commit in master");
+        commit(commitFile1, johnDoe, "Commit in default branch");
 
-        FreeStyleBuild build = build(projectWithMaster, Result.SUCCESS);
+        FreeStyleBuild build = build(projectWithDefaultBranch, Result.SUCCESS);
 
         assertRedundantFetchIsSkipped(build, "+refs/heads/*:refs/remotes/origin/*");
     }
@@ -408,28 +417,28 @@ public class GitSCMTest extends AbstractGitTestCase {
         repos.add(new UserRemoteConfig(testRepo.gitDir.getAbsolutePath(), "origin", "+refs/heads/foo:refs/remotes/foo", null));
 
         /* Without honor refspec on initial clone */
-        FreeStyleProject projectWithMaster = setupProject(repos, Collections.singletonList(new BranchSpec("master")), null, false, null);
+        FreeStyleProject projectWithDefaultBranch = setupProject(repos, Collections.singletonList(new BranchSpec(defaultBranchName)), null, false, null);
         if (random.nextBoolean()) {
             /* Randomly enable shallow clone, should not alter test assertions */
-            CloneOption cloneOptionMaster = new CloneOption(false, null, null);
-            cloneOptionMaster.setDepth(1);
-            ((GitSCM) projectWithMaster.getScm()).getExtensions().add(cloneOptionMaster);
+            CloneOption cloneOptionDefaultBranch = new CloneOption(false, null, null);
+            cloneOptionDefaultBranch.setDepth(1);
+            ((GitSCM) projectWithDefaultBranch.getScm()).getExtensions().add(cloneOptionDefaultBranch);
         }
 
         // create initial commit
         final String commitFile1 = "commitFile1";
-        commit(commitFile1, johnDoe, "Commit in master");
+        commit(commitFile1, johnDoe, "Commit in default branch");
         // Add another branch 'foo'
-        git.checkout().ref("master").branch("foo").execute();
+        git.checkout().ref(defaultBranchName).branch("foo").execute();
         commit(commitFile1, johnDoe, "Commit in foo");
 
         // Build will be success because the initial clone disregards refspec and fetches all branches
-        FreeStyleBuild build = build(projectWithMaster, Result.SUCCESS);
+        FreeStyleBuild build = build(projectWithDefaultBranch, Result.SUCCESS);
         FilePath childFile = returnFile(build);
 
         if (childFile != null) {
             // assert that no data is lost by avoidance of second fetch
-            assertThat("master branch was not fetched", childFile.readToString(), containsString("master"));
+            assertThat("default branch was not fetched", childFile.readToString(), containsString(defaultBranchName));
             assertThat("foo branch was not fetched", childFile.readToString(), containsString("foo"));
         }
 
@@ -453,29 +462,29 @@ public class GitSCMTest extends AbstractGitTestCase {
         repos.add(new UserRemoteConfig(testRepo.gitDir.getAbsolutePath(), "origin", refSpec, null));
 
         /* With honor refspec on initial clone */
-        FreeStyleProject projectWithMaster = setupProject(repos, Collections.singletonList(new BranchSpec("master")), null, false, null);
-        CloneOption cloneOptionMaster = new CloneOption(false, null, null);
-        cloneOptionMaster.setHonorRefspec(true);
-        ((GitSCM)projectWithMaster.getScm()).getExtensions().add(cloneOptionMaster);
+        FreeStyleProject projectWithDefaultBranch = setupProject(repos, Collections.singletonList(new BranchSpec(defaultBranchName)), null, false, null);
+        CloneOption cloneOptionDefaultBranch = new CloneOption(false, null, null);
+        cloneOptionDefaultBranch.setHonorRefspec(true);
+        ((GitSCM)projectWithDefaultBranch.getScm()).getExtensions().add(cloneOptionDefaultBranch);
 
         // create initial commit
         final String commitFile1 = "commitFile1";
-        final String commitFile1SHA1a = commit(commitFile1, johnDoe, "Commit in master");
+        final String commitFile1SHA1a = commit(commitFile1, johnDoe, "Commit in default branch");
         // Add another branch 'foo'
-        git.checkout().ref("master").branch("foo").execute();
+        git.checkout().ref(defaultBranchName).branch("foo").execute();
         final String commitFile1SHA1b = commit(commitFile1, johnDoe, "Commit in foo");
 
         // Build will be failure because the initial clone regards refspec and fetches branch 'foo' only.
-        FreeStyleBuild build = build(projectWithMaster, Result.FAILURE);
+        FreeStyleBuild build = build(projectWithDefaultBranch, Result.FAILURE);
 
         FilePath childFile = returnFile(build);
         assertNotNull(childFile);
         // assert that no data is lost by avoidance of second fetch
         final String fetchHeadContents = childFile.readToString();
         final List<String> buildLog = build.getLog(50);
-        assertThat("master branch was fetched: " + buildLog, fetchHeadContents, not(containsString("branch 'master'")));
+        assertThat("default branch was fetched: " + buildLog, fetchHeadContents, not(containsString("branch '" + defaultBranchName + "'")));
         assertThat("foo branch was not fetched: " + buildLog, fetchHeadContents, containsString("branch 'foo'"));
-        assertThat("master branch SHA1 '" + commitFile1SHA1a + "' fetched " + buildLog, fetchHeadContents, not(containsString(commitFile1SHA1a)));
+        assertThat("default branch branch SHA1 '" + commitFile1SHA1a + "' fetched " + buildLog, fetchHeadContents, not(containsString(commitFile1SHA1a)));
         assertThat("foo branch SHA1 '" + commitFile1SHA1b + "' was not fetched " + buildLog, fetchHeadContents, containsString(commitFile1SHA1b));
         assertRedundantFetchIsSkipped(build, refSpec);
 
@@ -490,19 +499,19 @@ public class GitSCMTest extends AbstractGitTestCase {
         repos.add(new UserRemoteConfig(testRepo.gitDir.getAbsolutePath(), "origin", nullRefspec, null));
 
         /* Without honor refspec on initial clone */
-        FreeStyleProject projectWithMaster = setupProject(repos, Collections.singletonList(new BranchSpec("master")), null, false, null);
+        FreeStyleProject projectWithDefaultBranch = setupProject(repos, Collections.singletonList(new BranchSpec(defaultBranchName)), null, false, null);
         if (random.nextBoolean()) {
             /* Randomly enable shallow clone, should not alter test assertions */
-            CloneOption cloneOptionMaster = new CloneOption(false, null, null);
-            cloneOptionMaster.setDepth(1);
-            ((GitSCM) projectWithMaster.getScm()).getExtensions().add(cloneOptionMaster);
+            CloneOption cloneOptionDefaultBranch = new CloneOption(false, null, null);
+            cloneOptionDefaultBranch.setDepth(1);
+            ((GitSCM) projectWithDefaultBranch.getScm()).getExtensions().add(cloneOptionDefaultBranch);
         }
 
         // create initial commit
         final String commitFile1 = "commitFile1";
-        commit(commitFile1, johnDoe, "Commit in master");
+        commit(commitFile1, johnDoe, "Commit in default branch");
 
-        FreeStyleBuild build = build(projectWithMaster, Result.SUCCESS);
+        FreeStyleBuild build = build(projectWithDefaultBranch, Result.SUCCESS);
 
         assertRedundantFetchIsSkipped(build, "+refs/heads/*:refs/remotes/origin/*");
     }
@@ -524,24 +533,24 @@ public class GitSCMTest extends AbstractGitTestCase {
         repos.add(new UserRemoteConfig(testRepo.gitDir.getAbsolutePath(), "origin", refspec, null));
 
         /* Without honor refspec on initial clone */
-        FreeStyleProject projectWithMaster = setupProject(repos, Collections.singletonList(new BranchSpec("master")), null, false, null);
+        FreeStyleProject projectWithDefaultBranch = setupProject(repos, Collections.singletonList(new BranchSpec(defaultBranchName)), null, false, null);
         if (random.nextBoolean()) {
             /* Randomly enable shallow clone, should not alter test assertions */
-            CloneOption cloneOptionMaster = new CloneOption(false, null, null);
-            cloneOptionMaster.setDepth(1);
-            ((GitSCM) projectWithMaster.getScm()).getExtensions().add(cloneOptionMaster);
+            CloneOption cloneOptionDefaultBranch = new CloneOption(false, null, null);
+            cloneOptionDefaultBranch.setDepth(1);
+            ((GitSCM) projectWithDefaultBranch.getScm()).getExtensions().add(cloneOptionDefaultBranch);
         }
 
         // create initial commit
         final String commitFile1 = "commitFile1";
-        commit(commitFile1, johnDoe, "Commit in master");
+        commit(commitFile1, johnDoe, "Commit in default branch");
 
         /* Create a ref for the fake pull in the source repository */
         String[] expectedResult = {""};
         CliGitCommand gitCmd = new CliGitCommand(testRepo.git, "update-ref", "refs/pull/553/head", "HEAD");
         assertThat(gitCmd.run(), is(expectedResult));
 
-        FreeStyleBuild build = build(projectWithMaster, Result.SUCCESS);
+        FreeStyleBuild build = build(projectWithDefaultBranch, Result.SUCCESS);
 
         assertRedundantFetchIsUsed(build, refspec);
     }
@@ -558,9 +567,9 @@ public class GitSCMTest extends AbstractGitTestCase {
         repos.add(new UserRemoteConfig(testRepo.gitDir.getAbsolutePath(), "origin", refspec, null));
 
         /* Without honor refspec on initial clone */
-        FreeStyleProject projectWithMaster = setupProject(repos, Collections.singletonList(new BranchSpec("master")), null, false, null);
+        FreeStyleProject projectWithDefaultBranch = setupProject(repos, Collections.singletonList(new BranchSpec(defaultBranchName)), null, false, null);
 
-        GitSCM scm = (GitSCM) projectWithMaster.getScm();
+        GitSCM scm = (GitSCM) projectWithDefaultBranch.getScm();
         final DescriptorImpl descriptor = (DescriptorImpl) scm.getDescriptor();
         assertThat("Redundant fetch is skipped by default", scm.isAllowSecondFetch(), is(false));
         descriptor.setAllowSecondFetch(true);
@@ -568,16 +577,16 @@ public class GitSCMTest extends AbstractGitTestCase {
 
         if (random.nextBoolean()) {
             /* Randomly enable shallow clone, should not alter test assertions */
-            CloneOption cloneOptionMaster = new CloneOption(false, null, null);
-            cloneOptionMaster.setDepth(1);
-            ((GitSCM) projectWithMaster.getScm()).getExtensions().add(cloneOptionMaster);
+            CloneOption cloneOptionDefaultBranch = new CloneOption(false, null, null);
+            cloneOptionDefaultBranch.setDepth(1);
+            ((GitSCM) projectWithDefaultBranch.getScm()).getExtensions().add(cloneOptionDefaultBranch);
         }
 
         // create initial commit
         final String commitFile1 = "commitFile1";
-        commit(commitFile1, johnDoe, "Commit in master");
+        commit(commitFile1, johnDoe, "Commit in default branch");
 
-        FreeStyleBuild build = build(projectWithMaster, Result.SUCCESS);
+        FreeStyleBuild build = build(projectWithDefaultBranch, Result.SUCCESS);
 
         assertRedundantFetchIsUsed(build, refspec);
     }
@@ -629,17 +638,17 @@ public class GitSCMTest extends AbstractGitTestCase {
     public void testSpecificRefspecsWithoutCloneOption() throws Exception {
         List<UserRemoteConfig> repos = new ArrayList<>();
         repos.add(new UserRemoteConfig(testRepo.gitDir.getAbsolutePath(), "origin", "+refs/heads/foo:refs/remotes/foo", null));
-        FreeStyleProject projectWithMaster = setupProject(repos, Collections.singletonList(new BranchSpec("master")), null, false, null);
+        FreeStyleProject projectWithDefaultBranch = setupProject(repos, Collections.singletonList(new BranchSpec(defaultBranchName)), null, false, null);
         FreeStyleProject projectWithFoo = setupProject(repos, Collections.singletonList(new BranchSpec("foo")), null, false, null);
 
         // create initial commit
         final String commitFile1 = "commitFile1";
-        commit(commitFile1, johnDoe, "Commit in master");
+        commit(commitFile1, johnDoe, "Commit in default branch");
         // create branch and make initial commit
-        git.checkout().ref("master").branch("foo").execute();
+        git.checkout().ref(defaultBranchName).branch("foo").execute();
         commit(commitFile1, johnDoe, "Commit in foo");
 
-        build(projectWithMaster, Result.SUCCESS); /* If clone refspec had been honored, this would fail */
+        build(projectWithDefaultBranch, Result.SUCCESS); /* If clone refspec had been honored, this would fail */
         build(projectWithFoo, Result.SUCCESS, commitFile1);
     }
 
@@ -655,7 +664,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     public void testAddFirstRepositoryWithNullRepoURL() throws Exception{
         List<UserRemoteConfig> repos = new ArrayList<>();
         repos.add(new UserRemoteConfig(null, null, null, null));
-        FreeStyleProject project = setupProject(repos, Collections.singletonList(new BranchSpec("master")), null, false, null);
+        FreeStyleProject project = setupProject(repos, Collections.singletonList(new BranchSpec(defaultBranchName)), null, false, null);
         FreeStyleBuild build = build(project, Result.FAILURE);
         // Before JENKINS-38608 fix
         assertThat("Build log reports 'Null value not allowed'",
@@ -679,7 +688,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         List<UserRemoteConfig> repos = new ArrayList<>();
         repos.add(new UserRemoteConfig(repoURL, null, null, null));
         repos.add(new UserRemoteConfig(null, null, null, null));
-        FreeStyleProject project = setupProject(repos, Collections.singletonList(new BranchSpec("master")), null, false, null);
+        FreeStyleProject project = setupProject(repos, Collections.singletonList(new BranchSpec(defaultBranchName)), null, false, null);
         FreeStyleBuild build = build(project, Result.FAILURE);
         // Before JENKINS-38608 fix
         assertThat("Build log reports 'Null value not allowed'",
@@ -691,32 +700,32 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testBranchSpecWithRemotesHierarchical() throws Exception {
-      FreeStyleProject projectMasterBranch = setupProject("master", false, null, null, null, true, null);
+      FreeStyleProject projectDefaultBranch = setupProject(defaultBranchName, false, null, null, null, true, null);
       FreeStyleProject projectHierarchicalBranch = setupProject("remotes/origin/rel-1/xy", false, null, null, null, true, null);
       // create initial commit
       final String commitFile1 = "commitFile1";
       commit(commitFile1, johnDoe, "Commit number 1");
-      // create hierarchical branch, delete master branch, and build
+      // create hierarchical branch, delete default branch branch, and build
       git.branch("rel-1/xy");
       git.checkout("rel-1/xy");
-      git.deleteBranch("master");
-      build(projectMasterBranch, Result.FAILURE);
+      git.deleteBranch(defaultBranchName);
+      build(projectDefaultBranch, Result.FAILURE);
       build(projectHierarchicalBranch, Result.SUCCESS, commitFile1);
     }
 
     @Test
     public void testBranchSpecUsingTagWithSlash() throws Exception {
-        FreeStyleProject projectMasterBranch = setupProject("path/tag", false, null, null, null, true, null);
+        FreeStyleProject projectDefaultBranch = setupProject("path/tag", false, null, null, null, true, null);
         // create initial commit and build
         final String commitFile1 = "commitFile1";
         commit(commitFile1, johnDoe, "Commit number 1 will be tagged with path/tag");
         testRepo.git.tag("path/tag", "tag with a slash in the tag name");
-        build(projectMasterBranch, Result.SUCCESS, commitFile1);
+        build(projectDefaultBranch, Result.SUCCESS, commitFile1);
       }
 
     @Test
     public void testBasicIncludedRegion() throws Exception {
-        FreeStyleProject project = setupProject("master", false, null, null, null, ".*3");
+        FreeStyleProject project = setupProject(defaultBranchName, false, null, null, null, ".*3");
 
         // create initial commit and then run the build against it:
         final String commitFile1 = "commitFile1";
@@ -751,29 +760,29 @@ public class GitSCMTest extends AbstractGitTestCase {
      * testMergeCommitInExcludedRegionIsIgnored() confirms behavior of excluded regions with merge commits.
      * This test has excluded and included regions, for files ending with .excluded and .included,
      * respectively. The git repository is set up so that a non-fast-forward merge commit comes
-     * to master. The newly merged commit is a file ending with .excluded, so it should be ignored.
+     * to default branch. The newly merged commit is a file ending with .excluded, so it should be ignored.
      *
      * @throws Exception on error
      */
     @Issue({"JENKINS-20389","JENKINS-23606"})
     @Test
     public void testMergeCommitInExcludedRegionIsIgnored() throws Exception {
-        final String branchToMerge = "new-branch-we-merge-to-master";
+        final String branchToMerge = "new-branch-we-merge-to-default-branch";
 
-        FreeStyleProject project = setupProject("master", false, null, ".*\\.excluded", null, ".*\\.included");
+        FreeStyleProject project = setupProject(defaultBranchName, false, null, ".*\\.excluded", null, ".*\\.included");
 
         final String initialCommit = "initialCommit";
-        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to master");
+        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to default branch");
         build(project, Result.SUCCESS, initialCommit);
         final String secondCommit = "secondCommit";
-        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to master");
+        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to default branch");
 
         testRepo.git.checkoutBranch(branchToMerge, "HEAD~");
         final String fileToMerge = "fileToMerge.excluded";
         commit(fileToMerge, johnDoe, "Commit should be ignored: " + fileToMerge + " to " + branchToMerge);
 
         ObjectId branchSHA = git.revParse("HEAD");
-        testRepo.git.checkoutBranch("master", "refs/heads/master");
+        testRepo.git.checkoutBranch(defaultBranchName, "refs/heads/" + defaultBranchName);
         MergeCommand mergeCommand = testRepo.git.merge();
         mergeCommand.setRevisionToMerge(branchSHA);
         mergeCommand.execute();
@@ -786,7 +795,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     /**
      * testMergeCommitInExcludedDirectoryIsIgnored() confirms behavior of excluded directories with merge commits.
      * This test has excluded and included directories, named /excluded/ and /included/,respectively. The repository
-     * is set up so that a non-fast-forward merge commit comes to master, and is in the directory /excluded/,
+     * is set up so that a non-fast-forward merge commit comes to default branch, and is in the directory /excluded/,
      * so it should be ignored.
      *
      * @throws Exception on error
@@ -794,22 +803,22 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Issue({"JENKINS-20389","JENKINS-23606"})
     @Test
     public void testMergeCommitInExcludedDirectoryIsIgnored() throws Exception {
-        final String branchToMerge = "new-branch-we-merge-to-master";
+        final String branchToMerge = "new-branch-we-merge-to-default-branch";
 
-        FreeStyleProject project = setupProject("master", false, null, "excluded/.*", null, "included/.*");
+        FreeStyleProject project = setupProject(defaultBranchName, false, null, "excluded/.*", null, "included/.*");
 
         final String initialCommit = "initialCommit";
-        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to master");
+        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to default branch");
         build(project, Result.SUCCESS, initialCommit);
         final String secondCommit = "secondCommit";
-        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to master");
+        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to default branch");
 
         testRepo.git.checkoutBranch(branchToMerge, "HEAD~");
         final String fileToMerge = "excluded/should-be-ignored";
         commit(fileToMerge, johnDoe, "Commit should be ignored: " + fileToMerge + " to " + branchToMerge);
 
         ObjectId branchSHA = git.revParse("HEAD");
-        testRepo.git.checkoutBranch("master", "refs/heads/master");
+        testRepo.git.checkoutBranch(defaultBranchName, "refs/heads/" + defaultBranchName);
         MergeCommand mergeCommand = testRepo.git.merge();
         mergeCommand.setRevisionToMerge(branchSHA);
         mergeCommand.execute();
@@ -822,7 +831,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     /**
      * testMergeCommitInIncludedRegionIsProcessed() confirms behavior of included regions with merge commits.
      * This test has excluded and included regions, for files ending with .excluded and .included, respectively.
-     * The git repository is set up so that a non-fast-forward merge commit comes to master. The newly merged
+     * The git repository is set up so that a non-fast-forward merge commit comes to default branch. The newly merged
      * commit is a file ending with .included, so it should be processed as a new change.
      *
      * @throws Exception on error
@@ -830,23 +839,23 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Issue({"JENKINS-20389","JENKINS-23606"})
     @Test
     public void testMergeCommitInIncludedRegionIsProcessed() throws Exception {
-        final String branchToMerge = "new-branch-we-merge-to-master";
+        final String branchToMerge = "new-branch-we-merge-to-default-branch";
 
-        FreeStyleProject project = setupProject("master", false, null, ".*\\.excluded", null, ".*\\.included");
+        FreeStyleProject project = setupProject(defaultBranchName, false, null, ".*\\.excluded", null, ".*\\.included");
 
         final String initialCommit = "initialCommit";
-        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to master");
+        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to default branch");
         build(project, Result.SUCCESS, initialCommit);
 
         final String secondCommit = "secondCommit";
-        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to master");
+        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to default branch");
 
         testRepo.git.checkoutBranch(branchToMerge, "HEAD~");
         final String fileToMerge = "fileToMerge.included";
         commit(fileToMerge, johnDoe, "Commit should be noticed and processed as a change: " + fileToMerge + " to " + branchToMerge);
 
         ObjectId branchSHA = git.revParse("HEAD");
-        testRepo.git.checkoutBranch("master", "refs/heads/master");
+        testRepo.git.checkoutBranch(defaultBranchName, "refs/heads/" + defaultBranchName);
         MergeCommand mergeCommand = testRepo.git.merge();
         mergeCommand.setRevisionToMerge(branchSHA);
         mergeCommand.execute();
@@ -859,7 +868,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     /**
      * testMergeCommitInIncludedRegionIsProcessed() confirms behavior of included directories with merge commits.
      * This test has excluded and included directories, named /excluded/ and /included/, respectively. The repository
-     * is set up so that a non-fast-forward merge commit comes to master, and is in the directory /included/,
+     * is set up so that a non-fast-forward merge commit comes to default branch, and is in the directory /included/,
      * so it should be processed as a new change.
      *
      * @throws Exception on error
@@ -867,23 +876,23 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Issue({"JENKINS-20389","JENKINS-23606"})
     @Test
     public void testMergeCommitInIncludedDirectoryIsProcessed() throws Exception {
-        final String branchToMerge = "new-branch-we-merge-to-master";
+        final String branchToMerge = "new-branch-we-merge-to-default-branch";
 
-        FreeStyleProject project = setupProject("master", false, null, "excluded/.*", null, "included/.*");
+        FreeStyleProject project = setupProject(defaultBranchName, false, null, "excluded/.*", null, "included/.*");
 
         final String initialCommit = "initialCommit";
-        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to master");
+        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to default branch");
         build(project, Result.SUCCESS, initialCommit);
 
         final String secondCommit = "secondCommit";
-        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to master");
+        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to default branch");
 
         testRepo.git.checkoutBranch(branchToMerge, "HEAD~");
         final String fileToMerge = "included/should-be-processed";
         commit(fileToMerge, johnDoe, "Commit should be noticed and processed as a change: " + fileToMerge + " to " + branchToMerge);
 
         ObjectId branchSHA = git.revParse("HEAD");
-        testRepo.git.checkoutBranch("master", "refs/heads/master");
+        testRepo.git.checkoutBranch(defaultBranchName, "refs/heads/" + defaultBranchName);
         MergeCommand mergeCommand = testRepo.git.merge();
         mergeCommand.setRevisionToMerge(branchSHA);
         mergeCommand.execute();
@@ -897,7 +906,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     /**
      * testMergeCommitOutsideIncludedRegionIsIgnored() confirms behavior of included regions with merge commits.
      * This test has an included region defined, for files ending with .included. There is no excluded region
-     * defined. The repository is set up and a non-fast-forward merge commit comes to master. The newly merged commit
+     * defined. The repository is set up and a non-fast-forward merge commit comes to default branch. The newly merged commit
      * is a file ending with .should-be-ignored, thus falling outside of the included region, so it should ignored.
      *
      * @throws Exception on error
@@ -905,23 +914,23 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Issue({"JENKINS-20389","JENKINS-23606"})
     @Test
     public void testMergeCommitOutsideIncludedRegionIsIgnored() throws Exception {
-        final String branchToMerge = "new-branch-we-merge-to-master";
+        final String branchToMerge = "new-branch-we-merge-to-default-branch";
 
-        FreeStyleProject project = setupProject("master", false, null, null, null, ".*\\.included");
+        FreeStyleProject project = setupProject(defaultBranchName, false, null, null, null, ".*\\.included");
 
         final String initialCommit = "initialCommit";
-        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to master");
+        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to default branch");
         build(project, Result.SUCCESS, initialCommit);
 
         final String secondCommit = "secondCommit";
-        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to master");
+        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to default branch");
 
         testRepo.git.checkoutBranch(branchToMerge, "HEAD~");
         final String fileToMerge = "fileToMerge.should-be-ignored";
         commit(fileToMerge, johnDoe, "Commit should be ignored: " + fileToMerge + " to " + branchToMerge);
 
         ObjectId branchSHA = git.revParse("HEAD");
-        testRepo.git.checkoutBranch("master", "refs/heads/master");
+        testRepo.git.checkoutBranch(defaultBranchName, "refs/heads/" + defaultBranchName);
         MergeCommand mergeCommand = testRepo.git.merge();
         mergeCommand.setRevisionToMerge(branchSHA);
         mergeCommand.execute();
@@ -934,7 +943,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     /**
      * testMergeCommitOutsideIncludedDirectoryIsIgnored() confirms behavior of included directories with merge commits.
      * This test has only an included directory `/included`  defined. The git repository is set up so that
-     * a non-fast-forward, but mergeable, commit comes to master. The newly merged commit is outside of the
+     * a non-fast-forward, but mergeable, commit comes to default branch. The newly merged commit is outside of the
      * /included/ directory, so polling should report no changes.
      *
      * @throws Exception on error
@@ -942,23 +951,23 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Issue({"JENKINS-20389","JENKINS-23606"})
     @Test
     public void testMergeCommitOutsideIncludedDirectoryIsIgnored() throws Exception {
-        final String branchToMerge = "new-branch-we-merge-to-master";
+        final String branchToMerge = "new-branch-we-merge-to-default-branch";
 
-        FreeStyleProject project = setupProject("master", false, null, null, null, "included/.*");
+        FreeStyleProject project = setupProject(defaultBranchName, false, null, null, null, "included/.*");
 
         final String initialCommit = "initialCommit";
-        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to master");
+        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to default branch");
         build(project, Result.SUCCESS, initialCommit);
 
         final String secondCommit = "secondCommit";
-        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to master");
+        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to default branch");
 
         testRepo.git.checkoutBranch(branchToMerge, "HEAD~");
         final String fileToMerge = "directory-to-ignore/file-should-be-ignored";
         commit(fileToMerge, johnDoe, "Commit should be ignored: " + fileToMerge + " to " + branchToMerge);
 
         ObjectId branchSHA = git.revParse("HEAD");
-        testRepo.git.checkoutBranch("master", "refs/heads/master");
+        testRepo.git.checkoutBranch(defaultBranchName, "refs/heads/" + defaultBranchName);
         MergeCommand mergeCommand = testRepo.git.merge();
         mergeCommand.setRevisionToMerge(branchSHA);
         mergeCommand.execute();
@@ -971,7 +980,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     /**
      * testMergeCommitOutsideExcludedRegionIsProcessed() confirms behavior of excluded regions with merge commits.
      * This test has an excluded region defined, for files ending with .excluded. There is no included region defined.
-     * The repository is set up so a non-fast-forward merge commit comes to master. The newly merged commit is a file
+     * The repository is set up so a non-fast-forward merge commit comes to default branch. The newly merged commit is a file
      * ending with .should-be-processed, thus falling outside of the excluded region, so it should processed
      * as a new change.
      *
@@ -980,23 +989,23 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Issue({"JENKINS-20389","JENKINS-23606"})
     @Test
     public void testMergeCommitOutsideExcludedRegionIsProcessed() throws Exception {
-        final String branchToMerge = "new-branch-we-merge-to-master";
+        final String branchToMerge = "new-branch-we-merge-to-default-branch";
 
-        FreeStyleProject project = setupProject("master", false, null, ".*\\.excluded", null, null);
+        FreeStyleProject project = setupProject(defaultBranchName, false, null, ".*\\.excluded", null, null);
 
         final String initialCommit = "initialCommit";
-        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to master");
+        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to default branch");
         build(project, Result.SUCCESS, initialCommit);
 
         final String secondCommit = "secondCommit";
-        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to master");
+        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to default branch");
 
         testRepo.git.checkoutBranch(branchToMerge, "HEAD~");
         final String fileToMerge = "fileToMerge.should-be-processed";
         commit(fileToMerge, johnDoe, "Commit should be noticed and processed as a change: " + fileToMerge + " to " + branchToMerge);
 
         ObjectId branchSHA = git.revParse("HEAD");
-        testRepo.git.checkoutBranch("master", "refs/heads/master");
+        testRepo.git.checkoutBranch(defaultBranchName, "refs/heads/" + defaultBranchName);
         MergeCommand mergeCommand = testRepo.git.merge();
         mergeCommand.setRevisionToMerge(branchSHA);
         mergeCommand.execute();
@@ -1009,7 +1018,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     /**
      * testMergeCommitOutsideExcludedDirectoryIsProcessed() confirms behavior of excluded directories with merge commits.
      * This test has an excluded directory `excluded` defined. There is no `included` directory defined. The repository
-     * is set up so that a non-fast-forward merge commit comes to master. The newly merged commit resides in a
+     * is set up so that a non-fast-forward merge commit comes to default branch. The newly merged commit resides in a
      * directory of its own, thus falling outside of the excluded directory, so it should processed
      * as a new change.
      *
@@ -1018,16 +1027,16 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Issue({"JENKINS-20389","JENKINS-23606"})
     @Test
     public void testMergeCommitOutsideExcludedDirectoryIsProcessed() throws Exception {
-        final String branchToMerge = "new-branch-we-merge-to-master";
+        final String branchToMerge = "new-branch-we-merge-to-default-branch";
 
-        FreeStyleProject project = setupProject("master", false, null, "excluded/.*", null, null);
+        FreeStyleProject project = setupProject(defaultBranchName, false, null, "excluded/.*", null, null);
 
         final String initialCommit = "initialCommit";
-        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to master");
+        commit(initialCommit, johnDoe, "Commit " + initialCommit + " to default branch");
         build(project, Result.SUCCESS, initialCommit);
 
         final String secondCommit = "secondCommit";
-        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to master");
+        commit(secondCommit, johnDoe, "Commit " + secondCommit + " to default branch");
 
         testRepo.git.checkoutBranch(branchToMerge, "HEAD~");
         // Create this new file outside of our excluded directory
@@ -1035,7 +1044,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         commit(fileToMerge, johnDoe, "Commit should be noticed and processed as a change: " + fileToMerge + " to " + branchToMerge);
 
         ObjectId branchSHA = git.revParse("HEAD");
-        testRepo.git.checkoutBranch("master", "refs/heads/master");
+        testRepo.git.checkoutBranch(defaultBranchName, "refs/heads/" + defaultBranchName);
         MergeCommand mergeCommand = testRepo.git.merge();
         mergeCommand.setRevisionToMerge(branchSHA);
         mergeCommand.execute();
@@ -1047,7 +1056,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testIncludedRegionWithDeeperCommits() throws Exception {
-        FreeStyleProject project = setupProject("master", false, null, null, null, ".*3");
+        FreeStyleProject project = setupProject(defaultBranchName, false, null, null, null, ".*3");
 
         // create initial commit and then run the build against it:
         final String commitFile1 = "commitFile1";
@@ -1084,7 +1093,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testBasicExcludedRegion() throws Exception {
-        FreeStyleProject project = setupProject("master", false, null, ".*2", null, null);
+        FreeStyleProject project = setupProject(defaultBranchName, false, null, ".*2", null, null);
 
         // create initial commit and then run the build against it:
         final String commitFile1 = "commitFile1";
@@ -1127,7 +1136,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testCleanBeforeCheckout() throws Exception {
-    	FreeStyleProject p = setupProject("master", false, null, null, "Jane Doe", null);
+    	FreeStyleProject p = setupProject(defaultBranchName, false, null, null, "Jane Doe", null);
         ((GitSCM)p.getScm()).getExtensions().add(new CleanBeforeCheckout());
 
         /* First build should not clean, since initial clone is always clean */
@@ -1150,8 +1159,8 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Test
     public void testExcludedRegionMultiCommit() throws Exception {
         // Got 2 projects, each one should only build if changes in its own file
-        FreeStyleProject clientProject = setupProject("master", false, null, ".*serverFile", null, null);
-        FreeStyleProject serverProject = setupProject("master", false, null, ".*clientFile", null, null);
+        FreeStyleProject clientProject = setupProject(defaultBranchName, false, null, ".*serverFile", null, null);
+        FreeStyleProject serverProject = setupProject(defaultBranchName, false, null, ".*clientFile", null, null);
         String initialCommitFile = "initialFile";
         commit(initialCommitFile, johnDoe, "initial commit");
         build(clientProject, Result.SUCCESS, initialCommitFile);
@@ -1186,7 +1195,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         final String branch2 = "Branch2";
 
         List<BranchSpec> branches = new ArrayList<BranchSpec>();
-        branches.add(new BranchSpec("master"));
+        branches.add(new BranchSpec(defaultBranchName));
         branches.add(new BranchSpec(branch1));
         branches.add(new BranchSpec(branch2));
         final FreeStyleProject project = setupProject(branches, false, null, null, janeDoe.getName(), null, false, null);
@@ -1206,14 +1215,14 @@ public class GitSCMTest extends AbstractGitTestCase {
         commit(commitFile2, johnDoe, "Commit number 2");
         final String commitFile3 = "commitFile3";
         commit(commitFile3, johnDoe, "Commit number 3");
-        assertTrue("scm polling should detect changes in 'master' branch", project.poll(listener).hasChanges());
+        assertTrue("scm polling should detect changes in default branch", project.poll(listener).hasChanges());
         build(project, Result.SUCCESS, commitFile1, commitFile2);
         assertFalse("scm polling should not detect any more changes after last build", project.poll(listener).hasChanges());
 
         // Add excluded commit
         final String commitFile4 = "commitFile4";
         commit(commitFile4, janeDoe, "Commit number 4");
-        assertFalse("scm polling detected change in 'master', which should have been excluded", project.poll(listener).hasChanges());
+        assertFalse("scm polling detected change in default branch, which should have been excluded", project.poll(listener).hasChanges());
 
         // now jump back...
         git.checkout(branch1);
@@ -1251,7 +1260,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testBasicExcludedUser() throws Exception {
-        FreeStyleProject project = setupProject("master", false, null, null, "Jane Doe", null);
+        FreeStyleProject project = setupProject(defaultBranchName, false, null, null, "Jane Doe", null);
 
         // create initial commit and then run the build against it:
         final String commitFile1 = "commitFile1";
@@ -1283,7 +1292,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testBasicInSubdir() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
         ((GitSCM)project.getScm()).getExtensions().add(new RelativeTargetDirectory("subdir"));
 
         // create initial commit and then run the build against it:
@@ -1312,7 +1321,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testBasicWithAgent() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
         project.setAssignedLabel(rule.createSlave().getSelfLabel());
 
         // create initial commit and then run the build against it:
@@ -1337,8 +1346,8 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Issue("HUDSON-7547")
     @Test
-    public void testBasicWithAgentNoExecutorsOnMaster() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+    public void testBasicWithAgentNoExecutorsOnController() throws Exception {
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         rule.jenkins.setNumExecutors(0);
 
@@ -1367,7 +1376,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Test
     public void testAuthorOrCommitterFalse() throws Exception {
         // Test with authorOrCommitter set to false and make sure we get the committer.
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         // create initial commit and then run the build against it:
         final String commitFile1 = "commitFile1";
@@ -1394,7 +1403,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Test
     public void testAuthorOrCommitterTrue() throws Exception {
         // Next, test with authorOrCommitter set to true and make sure we get the author.
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
         ((GitSCM)project.getScm()).getExtensions().add(new AuthorInChangelog());
 
         // create initial commit and then run the build against it:
@@ -1421,7 +1430,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testNewCommitToUntrackedBranchDoesNotTriggerBuild() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         // create initial commit and then run the build against it:
         final String commitFile1 = "commitFile1";
@@ -1442,13 +1451,13 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testEnvVarsAvailable() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         final String commitFile1 = "commitFile1";
         commit(commitFile1, johnDoe, "Commit number 1");
         FreeStyleBuild build1 = build(project, Result.SUCCESS, commitFile1);
 
-        assertEquals("origin/master", getEnvVars(project).get(GitSCM.GIT_BRANCH));
+        assertEquals("origin/" + defaultBranchName, getEnvVars(project).get(GitSCM.GIT_BRANCH));
         rule.waitForMessage(getEnvVars(project).get(GitSCM.GIT_BRANCH), build1);
 
         rule.waitForMessage(checkoutString(project, GitSCM.GIT_COMMIT), build1);
@@ -1467,7 +1476,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Issue("HUDSON-7411")
     @Test
     public void testNodeEnvVarsAvailable() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
         DumbSlave agent = rule.createSlave();
         setVariables(agent, new Entry("TESTKEY", "agent value"));
         project.setAssignedLabel(agent.getSelfLabel());
@@ -1527,11 +1536,12 @@ public class GitSCMTest extends AbstractGitTestCase {
 
         // tag it, then delete the tmp branch
         git.tag(mytag, "mytag initial");
-        git.checkout("master");
+        git.checkout(defaultBranchName);
         git.deleteBranch(tmpBranch);
 
-        // at this point we're back on master, there are no other branches, tag "mytag" exists but is
-        // not part of "master"
+        // at this point we're back on default branch, there are no
+        // other branches, tag "mytag" exists but is not part of
+        // default branch
         assertTrue("scm polling should detect commit2 change in 'mytag'", project.poll(listener).hasChanges());
         build(project, Result.SUCCESS, commitFile2);
         assertFalse("scm polling should not detect any more changes after last build", project.poll(listener).hasChanges());
@@ -1546,10 +1556,10 @@ public class GitSCMTest extends AbstractGitTestCase {
 
         // now we're going to force mytag to point to the new commit, if everything goes well, gitSCM should pick the change up:
         git.tag(mytag, "mytag moved");
-        git.checkout("master");
+        git.checkout(defaultBranchName);
         git.deleteBranch(tmpBranch);
 
-        // at this point we're back on master, there are no other branches, "mytag" has been updated to a new commit:
+        // at this point we're back on default branch, there are no other branches, "mytag" has been updated to a new commit:
         assertTrue("scm polling should detect commit3 change in 'mytag'", project.poll(listener).hasChanges());
         build(project, Result.SUCCESS, commitFile3);
         assertFalse("scm polling should not detect any more changes after last build", project.poll(listener).hasChanges());
@@ -1575,7 +1585,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         commit(commitFile2, johnDoe, "Commit number 2");
         final String commitFile3 = "commitFile3";
         commit(commitFile3, johnDoe, "Commit number 3");
-        assertTrue("scm polling should detect changes in 'master' branch", project.poll(listener).hasChanges());
+        assertTrue("scm polling should detect changes in default branch", project.poll(listener).hasChanges());
         build(project, Result.SUCCESS, commitFile1, commitFile2);
         assertFalse("scm polling should not detect any more changes after last build", project.poll(listener).hasChanges());
 
@@ -1733,12 +1743,12 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testHideCredentials() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
         store.addCredentials(Domain.global(), createCredential(CredentialsScope.GLOBAL, "github"));
         // setup global config
         List<UserRemoteConfig> remoteConfigs = GitSCM.createRepoList("https://github.com/jenkinsci/git-plugin", "github");
         project.setScm(new GitSCM(remoteConfigs,
-                Collections.singletonList(new BranchSpec("master")), false, null, null, null, null));
+                Collections.singletonList(new BranchSpec(defaultBranchName)), false, null, null, null, null));
 
         GitSCM scm = (GitSCM) project.getScm();
         final DescriptorImpl descriptor = (DescriptorImpl) scm.getDescriptor();
@@ -1771,7 +1781,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testEmailCommitter() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         // setup global config
         GitSCM scm = (GitSCM) project.getScm();
@@ -1812,14 +1822,14 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Issue("JENKINS-59868")
     @Test
     public void testNonExistentWorkingDirectoryPoll() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         // create initial commit and then run the build against it
         final String commitFile1 = "commitFile1";
         commit(commitFile1, johnDoe, "Commit number 1");
         project.setScm(new GitSCM(
                 ((GitSCM)project.getScm()).getUserRemoteConfigs(),
-                Collections.singletonList(new BranchSpec("master")),
+                Collections.singletonList(new BranchSpec(defaultBranchName)),
                 null, null,
                 // configure GitSCM with the DisableRemotePoll extension to ensure that polling use the workspace
                 Collections.singletonList(new DisableRemotePoll())));
@@ -1845,7 +1855,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     // Disabled - consistently fails, needs more analysis
     // @Test
     public void testFetchFromMultipleRepositories() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         TestGitRepo secondTestRepo = new TestGitRepo("second", secondRepo.getRoot(), listener);
         List<UserRemoteConfig> remotes = new ArrayList<>();
@@ -1854,7 +1864,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
         project.setScm(new GitSCM(
                 remotes,
-                Collections.singletonList(new BranchSpec("master")),
+                Collections.singletonList(new BranchSpec(defaultBranchName)),
                 null, null,
                 Collections.<GitSCMExtension>emptyList()));
 
@@ -1881,7 +1891,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     }
 
     private void branchSpecWithMultipleRepositories(String branchName) throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         TestGitRepo secondTestRepo = new TestGitRepo("second", secondRepo.getRoot(), listener);
         List<UserRemoteConfig> remotes = new ArrayList<>();
@@ -1908,14 +1918,14 @@ public class GitSCMTest extends AbstractGitTestCase {
     }
 
     @Issue("JENKINS-26268")
-    public void testBranchSpecAsRemotesOriginMasterWithMultipleRepositories() throws Exception {
-        branchSpecWithMultipleRepositories("remotes/origin/master");
+    public void testBranchSpecAsRemotesOriginDefaultBranchWithMultipleRepositories() throws Exception {
+        branchSpecWithMultipleRepositories("remotes/origin/" + defaultBranchName);
     }
 
     @Issue("JENKINS-25639")
     @Test
     public void testCommitDetectedOnlyOnceInMultipleRepositories() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         TestGitRepo secondTestRepo = new TestGitRepo("secondRepo", secondRepo.getRoot(), listener);
         List<UserRemoteConfig> remotes = new ArrayList<>();
@@ -1924,7 +1934,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
         GitSCM gitSCM = new GitSCM(
                 remotes,
-                Collections.singletonList(new BranchSpec("origin/master")),
+                Collections.singletonList(new BranchSpec("origin/" + defaultBranchName)),
                 null, null,
                 Collections.<GitSCMExtension>emptyList());
         project.setScm(gitSCM);
@@ -1943,10 +1953,10 @@ public class GitSCMTest extends AbstractGitTestCase {
             git.fetch_().from(remoteConfig.getURIs().get(0), remoteConfig.getFetchRefSpecs());
         }
         BuildChooser buildChooser = gitSCM.getBuildChooser();
-        Collection<Revision> candidateRevisions = buildChooser.getCandidateRevisions(false, "origin/master", git, listener, project.getLastBuild().getAction(BuildData.class), null);
+        Collection<Revision> candidateRevisions = buildChooser.getCandidateRevisions(false, "origin/" + defaultBranchName, git, listener, project.getLastBuild().getAction(BuildData.class), null);
         assertEquals(1, candidateRevisions.size());
         gitSCM.setBuildChooser(buildChooser); // Should be a no-op
-        Collection<Revision> candidateRevisions2 = buildChooser.getCandidateRevisions(false, "origin/master", git, listener, project.getLastBuild().getAction(BuildData.class), null);
+        Collection<Revision> candidateRevisions2 = buildChooser.getCandidateRevisions(false, "origin/" + defaultBranchName, git, listener, project.getLastBuild().getAction(BuildData.class), null);
         assertThat(candidateRevisions2, is(candidateRevisions));
     }
 
@@ -1956,7 +1966,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     private void addChangelogToBranchExtension(GitSCM scm) {
         if (useChangelogToBranch) {
             /* Changelog should be no different with this enabled or disabled */
-            ChangelogToBranchOptions changelogOptions = new ChangelogToBranchOptions("origin", "master");
+            ChangelogToBranchOptions changelogOptions = new ChangelogToBranchOptions("origin", defaultBranchName);
             scm.getExtensions().add(new ChangelogToBranch(changelogOptions));
         }
         useChangelogToBranch = !useChangelogToBranch;
@@ -1964,7 +1974,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testMerge() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         GitSCM scm = new GitSCM(
                 createRemoteRepositories(),
@@ -1991,7 +2001,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         testRepo.git.deleteBranch("integration");
         testRepo.git.checkout("topic1", "integration");
 
-        testRepo.git.checkout("master", "topic2");
+        testRepo.git.checkout(defaultBranchName, "topic2");
         final String commitFile2 = "commitFile2";
         commit(commitFile2, johnDoe, "Commit number 2");
         assertTrue("scm polling did not detect commit2 change", project.poll(listener).hasChanges());
@@ -2004,7 +2014,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Issue("JENKINS-20392")
     @Test
     public void testMergeChangelog() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         GitSCM scm = new GitSCM(
                 createRemoteRepositories(),
@@ -2023,7 +2033,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
         // Create second commit and run build
         // Here the changelog should contain exactly this one new commit
-        testRepo.git.checkout("master", "topic2");
+        testRepo.git.checkout(defaultBranchName, "topic2");
         final String commitFile2 = "commitFile2";
         String commitMessage = "Commit number 2";
         commit(commitFile2, johnDoe, commitMessage);
@@ -2038,7 +2048,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testMergeWithAgent() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
         project.setAssignedLabel(rule.createSlave().getSelfLabel());
 
         GitSCM scm = new GitSCM(
@@ -2066,7 +2076,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         testRepo.git.deleteBranch("integration");
         testRepo.git.checkout("topic1", "integration");
 
-        testRepo.git.checkout("master", "topic2");
+        testRepo.git.checkout(defaultBranchName, "topic2");
         final String commitFile2 = "commitFile2";
         commit(commitFile2, johnDoe, "Commit number 2");
         assertTrue("scm polling did not detect commit2 change", project.poll(listener).hasChanges());
@@ -2078,7 +2088,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testMergeFailed() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         GitSCM scm = new GitSCM(
                 createRemoteRepositories(),
@@ -2105,7 +2115,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         testRepo.git.deleteBranch("integration");
         testRepo.git.checkout("topic1", "integration");
 
-        testRepo.git.checkout("master", "topic2");
+        testRepo.git.checkout(defaultBranchName, "topic2");
         commit(commitFile1, "other content", johnDoe, "Commit number 2");
         assertTrue("scm polling did not detect commit2 change", project.poll(listener).hasChanges());
         rule.buildAndAssertStatus(Result.FAILURE, project);
@@ -2115,11 +2125,11 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Issue("JENKINS-25191")
     @Test
     public void testMultipleMergeFailed() throws Exception {
-    	FreeStyleProject project = setupSimpleProject("master");
+    	FreeStyleProject project = setupSimpleProject(defaultBranchName);
     	
     	GitSCM scm = new GitSCM(
     			createRemoteRepositories(),
-    			Collections.singletonList(new BranchSpec("master")),
+    			Collections.singletonList(new BranchSpec(defaultBranchName)),
     			null, null,
     			Collections.<GitSCMExtension>emptyList());
     	project.setScm(scm);
@@ -2133,10 +2143,10 @@ public class GitSCMTest extends AbstractGitTestCase {
     	build(project, Result.SUCCESS);
     	
     	final String commitFile = "commitFile";
-    	testRepo.git.checkoutBranch("integration1","master");
+    	testRepo.git.checkoutBranch("integration1",defaultBranchName);
     	commit(commitFile,"abc", johnDoe, "merge conflict with integration2");
     	
-    	testRepo.git.checkoutBranch("integration2","master");
+    	testRepo.git.checkoutBranch("integration2",defaultBranchName);
     	commit(commitFile,"cde", johnDoe, "merge conflict with integration1");
     	
     	final FreeStyleBuild build = build(project, Result.FAILURE);
@@ -2146,7 +2156,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testMergeFailedWithAgent() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
         project.setAssignedLabel(rule.createSlave().getSelfLabel());
 
         GitSCM scm = new GitSCM(
@@ -2174,7 +2184,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         testRepo.git.deleteBranch("integration");
         testRepo.git.checkout("topic1", "integration");
 
-        testRepo.git.checkout("master", "topic2");
+        testRepo.git.checkout(defaultBranchName, "topic2");
         commit(commitFile1, "other content", johnDoe, "Commit number 2");
         assertTrue("scm polling did not detect commit2 change", project.poll(listener).hasChanges());
         rule.buildAndAssertStatus(Result.FAILURE, project);
@@ -2215,7 +2225,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         testRepo.git.deleteBranch("integration");
         testRepo.git.checkout("topic1", "integration");
 
-        testRepo.git.checkout("master", "topic2");
+        testRepo.git.checkout(defaultBranchName, "topic2");
         final String commitFile2 = "commitFile2";
         commit(commitFile2, johnDoe, "Commit number 2");
         assertTrue("scm polling did not detect commit2 change", project.poll(listener).hasChanges());
@@ -2300,7 +2310,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         final String url = "https://github.com/jenkinsci/git-plugin.git";
         GitRepositoryBrowser browser = new GithubWeb(url);
         GitSCM scm = new GitSCM(createRepoList(url),
-                Collections.singletonList(new BranchSpec("*/master")),
+                Collections.singletonList(new BranchSpec("*/" + defaultBranchName)),
                 browser, null, null);
         p.setScm(scm);
 
@@ -2454,7 +2464,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         FreeStyleProject p = createFreeStyleProject();
         GitSCM oldGit = new GitSCM("https://github.com/jenkinsci/model-ant-project.git/");
         setupJGit(oldGit);
-        oldGit.getExtensions().add(new LocalBranch("master"));
+        oldGit.getExtensions().add(new LocalBranch(defaultBranchName));
         p.setScm(oldGit);
 
         FreeStyleBuild b = rule.buildAndAssertSuccess(p);
@@ -2464,7 +2474,7 @@ public class GitSCMTest extends AbstractGitTestCase {
                 Ref head = repo.findRef("HEAD");
                 assertTrue("Detached HEAD",head.isSymbolic());
                 Ref t = head.getTarget();
-                assertEquals(t.getName(),"refs/heads/master");
+                assertEquals(t.getName(),"refs/heads/" + defaultBranchName);
 
                 return null;
             }
@@ -2483,7 +2493,7 @@ public class GitSCMTest extends AbstractGitTestCase {
      */
     @Test
     public void testCheckoutToDefaultLocalBranch_StarStar() throws Exception {
-       FreeStyleProject project = setupSimpleProject("master");
+       FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
        final String commitFile1 = "commitFile1";
        commit(commitFile1, johnDoe, "Commit number 1");
@@ -2491,8 +2501,8 @@ public class GitSCMTest extends AbstractGitTestCase {
        git.getExtensions().add(new LocalBranch("**"));
        FreeStyleBuild build1 = build(project, Result.SUCCESS, commitFile1);
 
-       assertEquals("GIT_BRANCH", "origin/master", getEnvVars(project).get(GitSCM.GIT_BRANCH));
-       assertEquals("GIT_LOCAL_BRANCH", "master", getEnvVars(project).get(GitSCM.GIT_LOCAL_BRANCH));
+       assertEquals("GIT_BRANCH", "origin/" + defaultBranchName, getEnvVars(project).get(GitSCM.GIT_BRANCH));
+       assertEquals("GIT_LOCAL_BRANCH", defaultBranchName, getEnvVars(project).get(GitSCM.GIT_LOCAL_BRANCH));
     }
 
     /**
@@ -2507,7 +2517,7 @@ public class GitSCMTest extends AbstractGitTestCase {
      */
     @Test
     public void testCheckoutToDefaultLocalBranch_NULL() throws Exception {
-       FreeStyleProject project = setupSimpleProject("master");
+       FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
        final String commitFile1 = "commitFile1";
        commit(commitFile1, johnDoe, "Commit number 1");
@@ -2515,8 +2525,8 @@ public class GitSCMTest extends AbstractGitTestCase {
        git.getExtensions().add(new LocalBranch(""));
        FreeStyleBuild build1 = build(project, Result.SUCCESS, commitFile1);
 
-       assertEquals("GIT_BRANCH", "origin/master", getEnvVars(project).get(GitSCM.GIT_BRANCH));
-       assertEquals("GIT_LOCAL_BRANCH", "master", getEnvVars(project).get(GitSCM.GIT_LOCAL_BRANCH));
+       assertEquals("GIT_BRANCH", "origin/" + defaultBranchName, getEnvVars(project).get(GitSCM.GIT_BRANCH));
+       assertEquals("GIT_LOCAL_BRANCH", defaultBranchName, getEnvVars(project).get(GitSCM.GIT_LOCAL_BRANCH));
     }
 
     /*
@@ -2525,13 +2535,13 @@ public class GitSCMTest extends AbstractGitTestCase {
      */
     @Test
     public void testCheckoutSansLocalBranchExtension() throws Exception {
-       FreeStyleProject project = setupSimpleProject("master");
+       FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
        final String commitFile1 = "commitFile1";
        commit(commitFile1, johnDoe, "Commit number 1");
        FreeStyleBuild build1 = build(project, Result.SUCCESS, commitFile1);
 
-       assertEquals("GIT_BRANCH", "origin/master", getEnvVars(project).get(GitSCM.GIT_BRANCH));
+       assertEquals("GIT_BRANCH", "origin/" + defaultBranchName, getEnvVars(project).get(GitSCM.GIT_BRANCH));
        assertEquals("GIT_LOCAL_BRANCH", null, getEnvVars(project).get(GitSCM.GIT_LOCAL_BRANCH));
     }
     
@@ -2541,7 +2551,7 @@ public class GitSCMTest extends AbstractGitTestCase {
      */
     @Test
     public void testCheckoutRelativeTargetDirectoryExtension() throws Exception {
-       FreeStyleProject project = setupProject("master", false, "checkoutDir");
+       FreeStyleProject project = setupProject(defaultBranchName, false, "checkoutDir");
 
        final String commitFile1 = "commitFile1";
        commit(commitFile1, johnDoe, "Commit number 1");
@@ -2558,7 +2568,7 @@ public class GitSCMTest extends AbstractGitTestCase {
      */
     @Test
     public void testCheckoutSansRelativeTargetDirectoryExtension() throws Exception {
-       FreeStyleProject project = setupSimpleProject("master");
+       FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
        final String commitFile1 = "commitFile1";
        commit(commitFile1, johnDoe, "Commit number 1");
@@ -2568,7 +2578,7 @@ public class GitSCMTest extends AbstractGitTestCase {
     }
     @Test
     public void testCheckoutFailureIsRetryable() throws Exception {
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         // run build first to create workspace
         final String commitFile1 = "commitFile1";
@@ -2595,7 +2605,7 @@ public class GitSCMTest extends AbstractGitTestCase {
             /* Older git versions have unexpected behaviors with sparse checkout */
             return;
         }
-        FreeStyleProject project = setupProject("master", Collections.singletonList(new SparseCheckoutPath("toto")));
+        FreeStyleProject project = setupProject(defaultBranchName, Collections.singletonList(new SparseCheckoutPath("toto")));
 
         // run build first to create workspace
         final String commitFile1 = "toto/commitFile1";
@@ -2616,7 +2626,7 @@ public class GitSCMTest extends AbstractGitTestCase {
             /* Older git versions have unexpected behaviors with sparse checkout */
             return;
         }
-        FreeStyleProject project = setupProject("master", Collections.singletonList(new SparseCheckoutPath("titi")));
+        FreeStyleProject project = setupProject(defaultBranchName, Collections.singletonList(new SparseCheckoutPath("titi")));
 
         // run build first to create workspace
         final String commitFile1 = "toto/commitFile1";
@@ -2637,7 +2647,7 @@ public class GitSCMTest extends AbstractGitTestCase {
             /* Older git versions have unexpected behaviors with sparse checkout */
             return;
         }
-        FreeStyleProject project = setupSimpleProject("master");
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
 
         // run build first to create workspace
         final String commitFile1 = "toto/commitFile1";
@@ -2666,7 +2676,7 @@ public class GitSCMTest extends AbstractGitTestCase {
             /* Older git versions have unexpected behaviors with sparse checkout */
             return;
         }
-        FreeStyleProject project = setupProject("master", Collections.singletonList(new SparseCheckoutPath("titi")));
+        FreeStyleProject project = setupProject(defaultBranchName, Collections.singletonList(new SparseCheckoutPath("titi")));
 
         // run build first to create workspace
         final String commitFile1 = "toto/commitFile1";
@@ -2696,7 +2706,7 @@ public class GitSCMTest extends AbstractGitTestCase {
             /* Older git versions have unexpected behaviors with sparse checkout */
             return;
         }
-        FreeStyleProject project = setupProject("master", Collections.singletonList(new SparseCheckoutPath("titi")));
+        FreeStyleProject project = setupProject(defaultBranchName, Collections.singletonList(new SparseCheckoutPath("titi")));
         project.setAssignedLabel(rule.createSlave().getSelfLabel());
 
         // run build first to create workspace
@@ -2723,7 +2733,7 @@ public class GitSCMTest extends AbstractGitTestCase {
                 null, null,
                 Collections.<GitSCMExtension>emptyList());
         project.setScm(scm);
-        project.addProperty(new ParametersDefinitionProperty(new StringParameterDefinition("MY_BRANCH", "master")));
+        project.addProperty(new ParametersDefinitionProperty(new StringParameterDefinition("MY_BRANCH", defaultBranchName)));
 
         // commit something in order to create an initial base version in git
         commit("toto/commitFile1", johnDoe, "Commit number 1");
@@ -2756,7 +2766,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         build(project, Result.SUCCESS);
 
         /* Expects 1 build because the build of someBranch incorporates all
-         * the changes from the master branch as well as the changes from someBranch.
+         * the changes from the default branch branch as well as the changes from someBranch.
          */
         assertEquals("Wrong number of builds", 1, project.getBuilds().size());
 
@@ -2787,7 +2797,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         project.setScm(scm);
         project.addProperty(new ParametersDefinitionProperty(new StringParameterDefinition("MY_BRANCH", "trackedbranch")));
 
-        // Initial commit to master
+        // Initial commit to default branch
         commit("file1", johnDoe, "Initial Commit");
         
         // Create the branches
@@ -2857,7 +2867,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 		remoteConfigs.add(new UserRemoteConfig(testRepo.gitDir.getAbsolutePath(), "origin", "", null));
 		remoteConfigs.add(new UserRemoteConfig(testRepo.gitDir.getAbsolutePath(), "someOtherRepo", "", null));
 		GitSCM scm = new GitSCM(remoteConfigs,
-				Collections.singletonList(new BranchSpec("origin/master")), false,
+				Collections.singletonList(new BranchSpec("origin/" + defaultBranchName)), false,
 				Collections.<SubmoduleConfig> emptyList(), null, null,
 				Collections.<GitSCMExtension> emptyList());
 		project.setScm(scm);
@@ -2894,13 +2904,13 @@ public class GitSCMTest extends AbstractGitTestCase {
             final String systemPath = System.getenv("PATH");
             brokenPath = systemPath + File.pathSeparator + brokenPath;
         }
-        final StringParameterValue real_param = new StringParameterValue("MY_BRANCH", "master");
+        final StringParameterValue real_param = new StringParameterValue("MY_BRANCH", defaultBranchName);
         final StringParameterValue fake_param = new StringParameterValue("PATH", brokenPath);
 
         final Action[] actions = {new ParametersAction(real_param), new FakeParametersAction(fake_param)};
 
         // SECURITY-170 - have to use ParametersDefinitionProperty
-        project.addProperty(new ParametersDefinitionProperty(new StringParameterDefinition("MY_BRANCH", "master")));
+        project.addProperty(new ParametersDefinitionProperty(new StringParameterDefinition("MY_BRANCH", defaultBranchName)));
 
         FreeStyleBuild first_build = project.scheduleBuild2(0, new Cause.UserIdCause(), actions).get();
         rule.assertBuildStatus(Result.SUCCESS, first_build);
@@ -2908,7 +2918,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         Launcher launcher = workspace.createLauncher(listener);
         final EnvVars environment = GitUtils.getPollEnvironment(project, workspace, launcher, listener);
 
-        assertEquals(environment.get("MY_BRANCH"), "master");
+        assertEquals(environment.get("MY_BRANCH"), defaultBranchName);
         assertNotSame("Environment path should not be broken path", environment.get("PATH"), brokenPath);
     }
 
@@ -2953,12 +2963,12 @@ public class GitSCMTest extends AbstractGitTestCase {
      * Tests that builds have the correctly specified branches, associated with
      * the commit id, passed with "notifyCommit" URL.
      */
-    @Ignore("Intermittent failures on stable-3.10 branch, not on stable-3.9 or master")
+    @Ignore("Intermittent failures on stable-3.10 branch, not on stable-3.9 or on primary branch")
     @Issue("JENKINS-24133")
     // Flaky test distracting from primary focus
     // @Test
     public void testSha1NotificationBranches() throws Exception {
-        final String branchName = "master";
+        final String branchName = defaultBranchName;
         final FreeStyleProject project = setupProject(branchName, false);
         project.addTrigger(new SCMTrigger(""));
         final GitSCM git = (GitSCM) project.getScm();
@@ -3026,7 +3036,7 @@ public class GitSCMTest extends AbstractGitTestCase {
        ObjectId sha1 = ObjectId.fromString("2cec153f34767f7638378735dc2b907ed251a67d");
 
        /* This is the null that causes NPE */
-       Branch branch = new Branch("origin/master", sha1);
+       Branch branch = new Branch("origin/" + defaultBranchName, sha1);
 
        List<Branch> branchList = new ArrayList<>();
        branchList.add(branch);
@@ -3053,8 +3063,8 @@ public class GitSCMTest extends AbstractGitTestCase {
        EnvVars env = new EnvVars();
        scm.buildEnvVars(build, env); // NPE here before fix applied
        
-       assertEquals("GIT_BRANCH", "origin/master", env.get("GIT_BRANCH"));
-       assertEquals("GIT_LOCAL_BRANCH", "master", env.get("GIT_LOCAL_BRANCH"));
+       assertEquals("GIT_BRANCH", "origin/" + defaultBranchName, env.get("GIT_BRANCH"));
+       assertEquals("GIT_LOCAL_BRANCH", defaultBranchName, env.get("GIT_LOCAL_BRANCH"));
 
        /* Verify mocks were called as expected */
        verify(buildData, times(1)).getLastBuiltRevision();
@@ -3068,7 +3078,7 @@ public class GitSCMTest extends AbstractGitTestCase {
        ObjectId sha1 = ObjectId.fromString("2cec153f34767f7638378735dc2b907ed251a67d");
 
        /* This is the null that causes NPE */
-       Branch branch = new Branch("origin/master", sha1);
+       Branch branch = new Branch("origin/" + defaultBranchName, sha1);
 
        List<Branch> branchList = new ArrayList<>();
        branchList.add(branch);
@@ -3095,8 +3105,8 @@ public class GitSCMTest extends AbstractGitTestCase {
        EnvVars env = new EnvVars();
        scm.buildEnvVars(build, env); // NPE here before fix applied
        
-       assertEquals("GIT_BRANCH", "origin/master", env.get("GIT_BRANCH"));
-       assertEquals("GIT_LOCAL_BRANCH", "master", env.get("GIT_LOCAL_BRANCH"));
+       assertEquals("GIT_BRANCH", "origin/" + defaultBranchName, env.get("GIT_BRANCH"));
+       assertEquals("GIT_LOCAL_BRANCH", defaultBranchName, env.get("GIT_LOCAL_BRANCH"));
 
        /* Verify mocks were called as expected */
        verify(buildData, times(1)).getLastBuiltRevision();
@@ -3110,7 +3120,7 @@ public class GitSCMTest extends AbstractGitTestCase {
        ObjectId sha1 = ObjectId.fromString("2cec153f34767f7638378735dc2b907ed251a67d");
 
        /* This is the null that causes NPE */
-       Branch branch = new Branch("origin/master", sha1);
+       Branch branch = new Branch("origin/" + defaultBranchName, sha1);
 
        List<Branch> branchList = new ArrayList<>();
        branchList.add(branch);
@@ -3136,7 +3146,7 @@ public class GitSCMTest extends AbstractGitTestCase {
        EnvVars env = new EnvVars();
        scm.buildEnvVars(build, env); // NPE here before fix applied
        
-       assertEquals("GIT_BRANCH", "origin/master", env.get("GIT_BRANCH"));
+       assertEquals("GIT_BRANCH", "origin/" + defaultBranchName, env.get("GIT_BRANCH"));
        assertEquals("GIT_LOCAL_BRANCH", null, env.get("GIT_LOCAL_BRANCH"));
 
        /* Verify mocks were called as expected */
@@ -3150,7 +3160,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         ObjectId sha1 = ObjectId.fromString("2cec153f34767f7638378735dc2b907ed251a67d");
 
         List<Branch> branchList = new ArrayList<>();
-        Branch branch = new Branch("origin/master", sha1);
+        Branch branch = new Branch("origin/" + defaultBranchName, sha1);
         branchList.add(branch);
 
         Revision revision = new Revision(sha1, branchList);
@@ -3174,7 +3184,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         Map<String, String> env = new HashMap<>();
         scm.buildEnvironment(build, env);
 
-        assertEquals("GIT_BRANCH is invalid", "origin/master", env.get("GIT_BRANCH"));
+        assertEquals("GIT_BRANCH is invalid", "origin/" + defaultBranchName, env.get("GIT_BRANCH"));
         assertEquals("GIT_LOCAL_BRANCH is invalid", null, env.get("GIT_LOCAL_BRANCH"));
         assertEquals("GIT_COMMIT is invalid", sha1.getName(), env.get("GIT_COMMIT"));
         assertEquals("GIT_URL is invalid", testRepo.gitDir.getAbsolutePath(), env.get("GIT_URL"));
@@ -3186,7 +3196,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         ObjectId sha1 = ObjectId.fromString("2cec153f34767f7638378735dc2b907ed251a67d");
 
         List<Branch> branchList = new ArrayList<>();
-        Branch branch = new Branch("origin/master", sha1);
+        Branch branch = new Branch("origin/" + defaultBranchName, sha1);
         branchList.add(branch);
 
         Revision revision = new Revision(sha1, branchList);
@@ -3220,7 +3230,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         Map<String, String> env = new HashMap<>();
         scm.buildEnvironment(build, env);
 
-        assertEquals("GIT_BRANCH is invalid", "origin/master", env.get("GIT_BRANCH"));
+        assertEquals("GIT_BRANCH is invalid", "origin/" + defaultBranchName, env.get("GIT_BRANCH"));
         assertEquals("GIT_LOCAL_BRANCH is invalid", null, env.get("GIT_LOCAL_BRANCH"));
         assertEquals("GIT_COMMIT is invalid", sha1.getName(), env.get("GIT_COMMIT"));
         assertEquals("GIT_URL is invalid", testRepo.gitDir.getAbsolutePath(), env.get("GIT_URL"));
@@ -3235,7 +3245,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         sampleRepo.init();
         sampleRepo.write("file", "v1");
         sampleRepo.git("commit", "--all", "--message=test commit");
-        FreeStyleProject p = setupSimpleProject("master");
+        FreeStyleProject p = setupSimpleProject(defaultBranchName);
         Run<?,?> run = rule.buildAndAssertSuccess(p);
         rule.waitForMessage("Commit message: \"test commit\"", run);
     }
