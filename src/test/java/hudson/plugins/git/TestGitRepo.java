@@ -13,9 +13,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import jenkins.plugins.git.CliGitCommand;
+
 import org.eclipse.jgit.lib.PersonIdent;
 import org.jenkinsci.plugins.gitclient.Git;
 import org.jenkinsci.plugins.gitclient.GitClient;
+import org.junit.Assert;
 
 public class TestGitRepo {
 	protected String name; // The name of this repository.
@@ -30,6 +33,7 @@ public class TestGitRepo {
 
 	public final PersonIdent johnDoe = new PersonIdent("John Doe", "john@doe.com");
 	public final PersonIdent janeDoe = new PersonIdent("Jane Doe", "jane@doe.com");
+        public static String defaultBranchName = "";
 
     public TestGitRepo(String name, File tmpDir, TaskListener listener) throws IOException, InterruptedException {
 		this.name = name;
@@ -138,4 +142,28 @@ public class TestGitRepo {
         list.add(new UserRemoteConfig(gitDir.getAbsolutePath(), "origin", "", credentialsId));
         return list;
     }
+
+    /**
+     * Determine the default branch name.
+     * Command line git is moving towards more inclusive naming.
+     * Git 2.32.0 honors the configuration variable `init.defaultBranch` and uses it for the name of the initial branch.
+     * This method reads the global configuration and uses it to set the value of `defaultBranchName`.
+     */
+    public String getDefaultBranchName() throws Exception {
+        if (!defaultBranchName.isEmpty()) {
+            return defaultBranchName;
+        }
+        CliGitCommand gitCmd = new CliGitCommand(null);
+        File configDir = gitDir;
+        CliGitCommand getDefaultBranchNameCmd = new CliGitCommand(Git.with(TaskListener.NULL, new hudson.EnvVars()).in(configDir).using("git").getClient());
+        String[] output = getDefaultBranchNameCmd.runWithoutAssert("config", "--get", "init.defaultBranch");
+        for (String s : output) {
+            String result = s.trim();
+            if (result != null && !result.isEmpty()) {
+                defaultBranchName = result;
+            }
+        }
+        return defaultBranchName;
+    }
+
 }

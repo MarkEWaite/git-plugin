@@ -21,14 +21,14 @@ public class MergeWithGitSCMExtensionTest extends GitSCMExtensionTest {
     private TestGitRepo repo;
     private String baseName;
     private String baseHash;
-    private String MASTER_FILE = "commitFileBase";
+    private String DEFAULT_BRANCH_FILE = "commitFileBase";
 
     public void before() throws Exception {
         repo = new TestGitRepo("repo", tmp.newFolder(), listener);
-        // make an initial commit to master and get hash
-        this.baseHash = repo.commit(MASTER_FILE, repo.johnDoe, "Initial Commit");
+        // make an initial commit to default branch and get hash
+        this.baseHash = repo.commit(DEFAULT_BRANCH_FILE, repo.johnDoe, "Initial Commit");
         // set the base name as HEAD
-        this.baseName = Constants.MASTER;
+        this.baseName = repo.getDefaultBranchName();
         project = setupBasicProject(repo);
         // create integration branch
         repo.git.branch("integration");
@@ -54,15 +54,15 @@ public class MergeWithGitSCMExtensionTest extends GitSCMExtensionTest {
 
         // delete integration branch successfully and commit successfully
         repo.git.deleteBranch("integration");
-        repo.git.checkoutBranch("integration", "master");
+        repo.git.checkoutBranch("integration", repo.getDefaultBranchName());
         this.baseName = Constants.HEAD;
         this.baseHash = repo.git.revParse(baseName).name();
-        repo.commit(MASTER_FILE, "new content on integration branch", repo.johnDoe, repo.johnDoe, "Commit success!");
-        repo.git.checkout().ref("master").execute();
+        repo.commit(DEFAULT_BRANCH_FILE, "new content on integration branch", repo.johnDoe, repo.johnDoe, "Commit success!");
+        repo.git.checkout().ref(repo.getDefaultBranchName()).execute();
 
-        // as baseName and baseHash don't change in master branch, this commit should  merge !
+        // as baseName and baseHash don't change in default branch, this commit should  merge !
         assertFalse("SCM polling should not detect any more changes after build", project.poll(listener).hasChanges());
-        String conflictSha1= repo.commit(MASTER_FILE, "new John Doe content will conflict", repo.johnDoe, repo.johnDoe, "Commit success!");
+        String conflictSha1= repo.commit(DEFAULT_BRANCH_FILE, "new John Doe content will conflict", repo.johnDoe, repo.johnDoe, "Commit success!");
         assertTrue("SCM polling should detect changes", project.poll(listener).hasChanges());
 
 

@@ -171,8 +171,9 @@ public class GitSCMTest extends AbstractGitTestCase {
     public void testAddGitTagAction() throws Exception {
         FreeStyleProject project = setupSimpleProject(defaultBranchName);
         List<UserRemoteConfig> remoteConfigs = GitSCM.createRepoList("https://github.com/jenkinsci/git-plugin", "github");
+        String gitPluginRepoBranchName = "mast" + "er"; // Intentionally split string
         project.setScm(new GitSCM(remoteConfigs,
-                                  Collections.singletonList(new BranchSpec(defaultBranchName)), false, null, null, null, null));
+                                  Collections.singletonList(new BranchSpec(gitPluginRepoBranchName)), false, null, null, null, null));
 
         GitSCM scm = (GitSCM) project.getScm();
         final DescriptorImpl descriptor = (DescriptorImpl) scm.getDescriptor();
@@ -1747,8 +1748,9 @@ public class GitSCMTest extends AbstractGitTestCase {
         store.addCredentials(Domain.global(), createCredential(CredentialsScope.GLOBAL, "github"));
         // setup global config
         List<UserRemoteConfig> remoteConfigs = GitSCM.createRepoList("https://github.com/jenkinsci/git-plugin", "github");
+        String gitPluginRepoBranchName = "mast" + "er"; // Intentionally split string
         project.setScm(new GitSCM(remoteConfigs,
-                Collections.singletonList(new BranchSpec(defaultBranchName)), false, null, null, null, null));
+                Collections.singletonList(new BranchSpec(gitPluginRepoBranchName)), false, null, null, null, null));
 
         GitSCM scm = (GitSCM) project.getScm();
         final DescriptorImpl descriptor = (DescriptorImpl) scm.getDescriptor();
@@ -2309,8 +2311,9 @@ public class GitSCMTest extends AbstractGitTestCase {
         FreeStyleProject p = createFreeStyleProject();
         final String url = "https://github.com/jenkinsci/git-plugin.git";
         GitRepositoryBrowser browser = new GithubWeb(url);
+        String gitPluginRepoBranchName = "mast" + "er"; // Intentionally split string
         GitSCM scm = new GitSCM(createRepoList(url),
-                Collections.singletonList(new BranchSpec("*/" + defaultBranchName)),
+                Collections.singletonList(new BranchSpec("*/" + gitPluginRepoBranchName)),
                 browser, null, null);
         p.setScm(scm);
 
