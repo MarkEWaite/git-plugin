@@ -58,20 +58,20 @@ public class CandidateRevisionsTest extends AbstractGitRepository {
      *
      * Candidates should only include the commit pointed to by tag/b or tag/c if
      * the tags refspec is used and only tag/a has previously been built. If the
-     * refspec were expanded to include the master branch, then the candidate
-     * revisions would also include the master branch.
+     * refspec were expanded to include the default branch, then the candidate
+     * revisions would also include the default branch.
      */
     @Test
     public void testChooseWithMultipleTag() throws Exception {
         commitNewFile("file-1-in-repo-1");
         ObjectId commit1 = testGitClient.revParse("HEAD");
-        assertEquals(commit1, testGitClient.revParse("master"));
+        assertEquals(commit1, testGitClient.revParse(repo.getDefaultBranchName()));
 
         testGitClient.tag("tag/a", "Applied tag/a to commit 1");
 
         commitNewFile("file-2-in-repo-1");
         ObjectId commit2 = testGitClient.revParse("HEAD");
-        assertEquals(commit2, testGitClient.revParse("master"));
+        assertEquals(commit2, testGitClient.revParse(repo.getDefaultBranchName()));
 
         /* Two tags point to the same commit */
         testGitClient.tag("tag/b", "Applied tag/b to commit 2");
@@ -79,12 +79,12 @@ public class CandidateRevisionsTest extends AbstractGitRepository {
         assertEquals(commit2, testGitClient.revParse("tag/b"));
         assertEquals(commit2, testGitClient.revParse("tag/c"));
 
-        /* Advance master beyond the two tags */
+        /* Advance default branch beyond the two tags */
         commitNewFile("file-3-in-repo-1");
         ObjectId commit3 = testGitClient.revParse("HEAD");
-        assertEquals(commit3, testGitClient.revParse("master"));
+        assertEquals(commit3, testGitClient.revParse(repo.getDefaultBranchName()));
 
-        /* This refspec doesn't clone master branch, don't checkout master */
+        /* This refspec doesn't clone default branch, don't checkout default branch */
         RefSpec tagsRefSpec = new RefSpec("+refs/tags/tag/*:refs/remotes/origin/tags/tag/*");
         testGitClient2.clone_()
                 .refspecs(Arrays.asList(tagsRefSpec))
