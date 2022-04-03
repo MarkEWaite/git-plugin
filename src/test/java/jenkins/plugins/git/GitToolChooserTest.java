@@ -52,7 +52,7 @@ public class GitToolChooserTest {
     @Rule
     public GitSampleRepoRule sampleRepo = new GitSampleRepoRule();
 
-    static final String GitBranchSCMHead_DEV_MASTER = "[GitBranchSCMHead{name='dev', ref='refs/heads/dev'}, GitBranchSCMHead{name='master', ref='refs/heads/master'}]";
+    private String GitBranchSCMHead_DEV_DEFAULT_BRANCH = "[GitBranchSCMHead{name='dev', ref='refs/heads/dev'}, GitBranchSCMHead{name='master', ref='refs/heads/master'}]";
 
     private CredentialsStore store = null;
 
@@ -74,6 +74,12 @@ public class GitToolChooserTest {
     @Before
     public void resetRepositorySizeCache() {
         GitToolChooser.clearRepositorySizeCache();
+    }
+
+    @Before
+    public void updateExpectedResult() throws Exception {
+        // Intentionally split string
+        GitBranchSCMHead_DEV_DEFAULT_BRANCH = GitBranchSCMHead_DEV_DEFAULT_BRANCH.replaceAll("mast" + "er", sampleRepo.getDefaultBranchName());
     }
 
     /*
@@ -149,7 +155,7 @@ public class GitToolChooserTest {
         agent.setLabelString("agent-windows");
 
         TestToolInstaller inst = new TestToolInstaller(jenkins.jenkins.getSelfLabel().getName(), "echo Hello", "myGit/git");
-        GitTool toolOnMaster = new GitTool("myGit", "default/git", Collections.singletonList(
+        GitTool toolOnController = new GitTool("myGit", "default/git", Collections.singletonList(
                 new InstallSourceProperty(Collections.singletonList(inst))));
 
         TestToolInstaller instonAgent = new TestToolInstaller("agent-windows", "echo Hello", "my-git/git");
@@ -157,9 +163,9 @@ public class GitToolChooserTest {
 
         GitTool JTool = new JGitTool(Collections.<ToolProperty<?>>emptyList());
 
-        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(toolOnMaster, toolOnAgent, JTool);
+        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(toolOnController, toolOnAgent, JTool);
         agent.getNodeProperties().add(new ToolLocationNodeProperty(new ToolLocationNodeProperty.ToolLocation(
-                jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class), toolOnMaster.getName(), toolOnMaster.getHome())));
+                jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class), toolOnController.getName(), toolOnController.getHome())));
 
         agent.getNodeProperties().add(new ToolLocationNodeProperty(new ToolLocationNodeProperty.ToolLocation(
                 jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class), toolOnAgent.getName(), toolOnAgent.getHome())));
@@ -223,7 +229,7 @@ public class GitToolChooserTest {
         // SCMHeadObserver.Collector.result is a TreeMap so order is predictable:
         assertEquals("[]", source.fetch(listener).toString());
         source.setTraits(Collections.<SCMSourceTrait>singletonList(new BranchDiscoveryTrait()));
-        assertEquals(GitBranchSCMHead_DEV_MASTER, source.fetch(listener).toString());
+        assertEquals(GitBranchSCMHead_DEV_DEFAULT_BRANCH, source.fetch(listener).toString());
 
         // With JGit, we don't ask the name and home of the tool
         GitTool tool = new JGitTool(Collections.<ToolProperty<?>>emptyList());
@@ -740,6 +746,7 @@ public class GitToolChooserTest {
                 "node {\n"
                         + "  checkout(\n"
                         + "    [$class: 'GitSCM', \n"
+                        + "      branches: [[name: '" + sampleRepo.getDefaultBranchName() + "']],\n"
                         + "      userRemoteConfigs: [[credentialsId: 'github', url: $/" + sampleRepo + "/$]]]\n"
                         + "  )\n"
                         + "  def tokenBranch = tm '${GIT_BRANCH,fullName=false}'\n"
@@ -749,7 +756,7 @@ public class GitToolChooserTest {
         if (!noCredentials) {
             jenkins.waitForMessage("using credential github", b);
         }
-        jenkins.waitForMessage("token macro expanded branch is remotes/origin/master", b); // Unexpected but current behavior
+        jenkins.waitForMessage("token macro expanded branch is " + sampleRepo.getDefaultBranchName(), b);
     }
 
     /* Attempt to perform a checkout without defining a remote repository. Expected to fail, but should not report NPE */
