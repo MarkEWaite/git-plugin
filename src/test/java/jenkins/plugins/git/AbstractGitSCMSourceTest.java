@@ -64,6 +64,7 @@ import org.jenkinsci.plugins.gitclient.Git;
 import org.jenkinsci.plugins.gitclient.GitClient;
 import org.jenkinsci.plugins.gitclient.TestJGitAPIImpl;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
@@ -94,8 +95,8 @@ import static org.mockito.Mockito.when;
  */
 public class AbstractGitSCMSourceTest {
 
-    static final String GitBranchSCMHead_DEV_MASTER = "[GitBranchSCMHead{name='dev', ref='refs/heads/dev'}, GitBranchSCMHead{name='master', ref='refs/heads/master'}]";
-    static final String GitBranchSCMHead_DEV_DEV2_MASTER = "[GitBranchSCMHead{name='dev', ref='refs/heads/dev'}, GitBranchSCMHead{name='dev2', ref='refs/heads/dev2'}, GitBranchSCMHead{name='master', ref='refs/heads/master'}]";
+    static String GitBranchSCMHead_DEV_DEFAULT_BRANCH = "[GitBranchSCMHead{name='dev', ref='refs/heads/dev'}, GitBranchSCMHead{name='master', ref='refs/heads/master'}]";
+    static String GitBranchSCMHead_DEV_DEV2_DEFAULT_BRANCH = "[GitBranchSCMHead{name='dev', ref='refs/heads/dev'}, GitBranchSCMHead{name='dev2', ref='refs/heads/dev2'}, GitBranchSCMHead{name='master', ref='refs/heads/master'}]";
 
     @Rule
     public JenkinsRule r = new JenkinsRule();
@@ -103,6 +104,23 @@ public class AbstractGitSCMSourceTest {
     public GitSampleRepoRule sampleRepo = new GitSampleRepoRule();
     @Rule
     public GitSampleRepoRule sampleRepo2 = new GitSampleRepoRule();
+
+    private String defaultBranchName = "";
+
+    @Before
+    public void fixupExpectedSourceFetchValue() throws Exception {
+        if (!defaultBranchName.isEmpty()) {
+            return;
+        }
+        defaultBranchName = sampleRepo.getDefaultBranchName();
+        if (!GitBranchSCMHead_DEV_DEFAULT_BRANCH.contains(defaultBranchName)) {
+            GitBranchSCMHead_DEV_DEFAULT_BRANCH = GitBranchSCMHead_DEV_DEFAULT_BRANCH.replaceAll("mast" + "er", defaultBranchName);
+        }
+        if (!GitBranchSCMHead_DEV_DEV2_DEFAULT_BRANCH.contains(defaultBranchName)) {
+            GitBranchSCMHead_DEV_DEV2_DEFAULT_BRANCH = GitBranchSCMHead_DEV_DEV2_DEFAULT_BRANCH.replaceAll("mast" + "er", defaultBranchName);
+        }
+        System.out.println("==== Expected is " + GitBranchSCMHead_DEV_DEFAULT_BRANCH);
+    }
 
     // TODO AbstractGitSCMSourceRetrieveHeadsTest *sounds* like it would be the right place, but it does not in fact retrieve any heads!
     @Issue("JENKINS-37482")
@@ -116,14 +134,14 @@ public class AbstractGitSCMSourceTest {
         SCMSource source = new GitSCMSource(null, sampleRepo.toString(), "", "*", "", true);
         TaskListener listener = StreamTaskListener.fromStderr();
         // SCMHeadObserver.Collector.result is a TreeMap so order is predictable:
-        assertEquals(GitBranchSCMHead_DEV_MASTER, source.fetch(listener).toString());
+        assertEquals(GitBranchSCMHead_DEV_DEFAULT_BRANCH, source.fetch(listener).toString());
         // And reuse cache:
-        assertEquals(GitBranchSCMHead_DEV_MASTER, source.fetch(listener).toString());
+        assertEquals(GitBranchSCMHead_DEV_DEFAULT_BRANCH, source.fetch(listener).toString());
         sampleRepo.git("checkout", "-b", "dev2");
         sampleRepo.write("file", "modified again");
         sampleRepo.git("commit", "--all", "--message=dev2");
         // After changing data:
-        assertEquals(GitBranchSCMHead_DEV_DEV2_MASTER, source.fetch(listener).toString());
+        assertEquals(GitBranchSCMHead_DEV_DEV2_DEFAULT_BRANCH, source.fetch(listener).toString());
     }
 
     @Test
@@ -137,14 +155,14 @@ public class AbstractGitSCMSourceTest {
         // SCMHeadObserver.Collector.result is a TreeMap so order is predictable:
         assertEquals("[]", source.fetch(listener).toString());
         source.setTraits(Collections.<SCMSourceTrait>singletonList(new BranchDiscoveryTrait()));
-        assertEquals(GitBranchSCMHead_DEV_MASTER, source.fetch(listener).toString());
+        assertEquals(GitBranchSCMHead_DEV_DEFAULT_BRANCH, source.fetch(listener).toString());
         // And reuse cache:
-        assertEquals(GitBranchSCMHead_DEV_MASTER, source.fetch(listener).toString());
+        assertEquals(GitBranchSCMHead_DEV_DEFAULT_BRANCH, source.fetch(listener).toString());
         sampleRepo.git("checkout", "-b", "dev2");
         sampleRepo.write("file", "modified again");
         sampleRepo.git("commit", "--all", "--message=dev2");
         // After changing data:
-        assertEquals(GitBranchSCMHead_DEV_DEV2_MASTER, source.fetch(listener).toString());
+        assertEquals(GitBranchSCMHead_DEV_DEV2_DEFAULT_BRANCH, source.fetch(listener).toString());
     }
 
     @Issue("JENKINS-46207")
@@ -165,14 +183,14 @@ public class AbstractGitSCMSourceTest {
         // SCMHeadObserver.Collector.result is a TreeMap so order is predictable:
         assertEquals("[]", source.fetch(listener).toString());
         source.setTraits(Collections.<SCMSourceTrait>singletonList(new BranchDiscoveryTrait()));
-        assertEquals(GitBranchSCMHead_DEV_MASTER, source.fetch(listener).toString());
+        assertEquals(GitBranchSCMHead_DEV_DEFAULT_BRANCH, source.fetch(listener).toString());
         // And reuse cache:
-        assertEquals(GitBranchSCMHead_DEV_MASTER, source.fetch(listener).toString());
+        assertEquals(GitBranchSCMHead_DEV_DEFAULT_BRANCH, source.fetch(listener).toString());
         sampleRepo.git("checkout", "-b", "dev2");
         sampleRepo.write("file", "modified again");
         sampleRepo.git("commit", "--all", "--message=dev2");
         // After changing data:
-        assertEquals(GitBranchSCMHead_DEV_DEV2_MASTER, source.fetch(listener).toString());
+        assertEquals(GitBranchSCMHead_DEV_DEV2_DEFAULT_BRANCH, source.fetch(listener).toString());
     }
 
     @Issue("JENKINS-46207")
@@ -226,7 +244,8 @@ public class AbstractGitSCMSourceTest {
                 }
             }
         }
-        String expected = "[SCMHead{'annotated'}, GitBranchSCMHead{name='dev', ref='refs/heads/dev'}, SCMHead{'lightweight'}, GitBranchSCMHead{name='master', ref='refs/heads/master'}]";
+        String expected = "[SCMHead{'annotated'}, GitBranchSCMHead{name='dev', ref='refs/heads/dev'}, SCMHead{'lightweight'},"
+                        + " GitBranchSCMHead{name='" + defaultBranchName + "', ref='refs/heads/" + defaultBranchName + "'}]";
         assertEquals(expected, scmHeadSet.toString());
         // And reuse cache:
         assertEquals(expected, source.fetch(listener).toString());
@@ -234,7 +253,9 @@ public class AbstractGitSCMSourceTest {
         sampleRepo.write("file", "modified again");
         sampleRepo.git("commit", "--all", "--message=dev2");
         // After changing data:
-        expected = "[SCMHead{'annotated'}, GitBranchSCMHead{name='dev', ref='refs/heads/dev'}, GitBranchSCMHead{name='dev2', ref='refs/heads/dev2'}, SCMHead{'lightweight'}, GitBranchSCMHead{name='master', ref='refs/heads/master'}]";
+        expected = "[SCMHead{'annotated'}, GitBranchSCMHead{name='dev', ref='refs/heads/dev'},"
+                 + " GitBranchSCMHead{name='dev2', ref='refs/heads/dev2'}, SCMHead{'lightweight'},"
+                 + " GitBranchSCMHead{name='" + defaultBranchName + "', ref='refs/heads/" + defaultBranchName + "'}]";
         assertEquals(expected, source.fetch(listener).toString());
     }
 
@@ -280,11 +301,11 @@ public class AbstractGitSCMSourceTest {
         TaskListener listener = StreamTaskListener.fromStderr();
         assertThat(source.fetchRevisions(listener, null), hasSize(0));
         source.setTraits(Collections.<SCMSourceTrait>singletonList(new BranchDiscoveryTrait()));
-        assertThat(source.fetchRevisions(listener, null), containsInAnyOrder("dev", "master"));
+        assertThat(source.fetchRevisions(listener, null), containsInAnyOrder("dev", sampleRepo.getDefaultBranchName()));
         source.setTraits(Collections.<SCMSourceTrait>singletonList(new TagDiscoveryTrait()));
         assertThat(source.fetchRevisions(listener, null), containsInAnyOrder("annotated", "lightweight"));
         source.setTraits(Arrays.asList(new BranchDiscoveryTrait(), new TagDiscoveryTrait()));
-        assertThat(source.fetchRevisions(listener, null), containsInAnyOrder("dev", "master", "annotated", "lightweight"));
+        assertThat(source.fetchRevisions(listener, null), containsInAnyOrder("dev", sampleRepo.getDefaultBranchName(), "annotated", "lightweight"));
     }
 
     @Issue("JENKINS-64803")
@@ -346,7 +367,7 @@ public class AbstractGitSCMSourceTest {
     @Test
     public void retrieveByName() throws Exception {
         sampleRepo.init();
-        String masterHash = sampleRepo.head();
+        String defaultBranchHash = sampleRepo.head();
         sampleRepo.git("checkout", "-b", "dev");
         sampleRepo.write("file", "modified");
         sampleRepo.git("commit", "--all", "--message=dev");
@@ -364,10 +385,10 @@ public class AbstractGitSCMSourceTest {
 
         TaskListener listener = StreamTaskListener.fromStderr();
 
-        listener.getLogger().println("\n=== fetch('master') ===\n");
-        SCMRevision rev = source.fetch("master", listener, null);
+        listener.getLogger().println("\n=== fetch('" + defaultBranchName + "') ===\n");
+        SCMRevision rev = source.fetch(sampleRepo.getDefaultBranchName(), listener, null);
         assertThat(rev, instanceOf(AbstractGitSCMSource.SCMRevisionImpl.class));
-        assertThat(((AbstractGitSCMSource.SCMRevisionImpl)rev).getHash(), is(masterHash));
+        assertThat(((AbstractGitSCMSource.SCMRevisionImpl)rev).getHash(), is(defaultBranchHash));
         listener.getLogger().println("\n=== fetch('dev') ===\n");
         rev = source.fetch("dev", listener, null);
         assertThat(rev, instanceOf(AbstractGitSCMSource.SCMRevisionImpl.class));
@@ -381,17 +402,17 @@ public class AbstractGitSCMSourceTest {
         assertThat(rev, instanceOf(GitTagSCMRevision.class));
         assertThat(((GitTagSCMRevision)rev).getHash(), is(v2Hash));
 
-        listener.getLogger().printf("%n=== fetch('%s') ===%n%n", masterHash);
-        rev = source.fetch(masterHash, listener, null);
+        listener.getLogger().printf("%n=== fetch('%s') ===%n%n", defaultBranchHash);
+        rev = source.fetch(defaultBranchHash, listener, null);
         assertThat(rev, instanceOf(AbstractGitSCMSource.SCMRevisionImpl.class));
-        assertThat(((AbstractGitSCMSource.SCMRevisionImpl) rev).getHash(), is(masterHash));
-        assertThat(rev.getHead().getName(), is("master"));
+        assertThat(((AbstractGitSCMSource.SCMRevisionImpl) rev).getHash(), is(defaultBranchHash));
+        assertThat(rev.getHead().getName(), is(sampleRepo.getDefaultBranchName()));
 
-        listener.getLogger().printf("%n=== fetch('%s') ===%n%n", masterHash.substring(0, 10));
-        rev = source.fetch(masterHash.substring(0, 10), listener, null);
+        listener.getLogger().printf("%n=== fetch('%s') ===%n%n", defaultBranchHash.substring(0, 10));
+        rev = source.fetch(defaultBranchHash.substring(0, 10), listener, null);
         assertThat(rev, instanceOf(AbstractGitSCMSource.SCMRevisionImpl.class));
-        assertThat(((AbstractGitSCMSource.SCMRevisionImpl) rev).getHash(), is(masterHash));
-        assertThat(rev.getHead().getName(), is("master"));
+        assertThat(((AbstractGitSCMSource.SCMRevisionImpl) rev).getHash(), is(defaultBranchHash));
+        assertThat(rev.getHead().getName(), is(sampleRepo.getDefaultBranchName()));
 
         listener.getLogger().printf("%n=== fetch('%s') ===%n%n", devHash);
         rev = source.fetch(devHash, listener, null);
@@ -466,7 +487,7 @@ public class AbstractGitSCMSourceTest {
             // The next line illustrates that case with older command line git.
             sampleRepo.git("checkout", "-b", "new-primary-duplicate", "new-primary");
         }
-        sampleRepo.git("checkout", "master");
+        sampleRepo.git("checkout", sampleRepo.getDefaultBranchName());
         sampleRepo.git("checkout", "-b", "dev");
         sampleRepo.git("symbolic-ref", "HEAD", "refs/heads/new-primary");
 
@@ -481,9 +502,9 @@ public class AbstractGitSCMSourceTest {
             headByName.put(h.getName(), h);
         }
         if (duplicatePrimary) {
-            assertThat(headByName.keySet(), containsInAnyOrder("master", "dev", "new-primary", "new-primary-duplicate"));
+            assertThat(headByName.keySet(), containsInAnyOrder(sampleRepo.getDefaultBranchName(), "dev", "new-primary", "new-primary-duplicate"));
         } else {
-            assertThat(headByName.keySet(), containsInAnyOrder("master", "dev", "new-primary"));
+            assertThat(headByName.keySet(), containsInAnyOrder(sampleRepo.getDefaultBranchName(), "dev", "new-primary"));
         }
         List<Action> actions = source.fetchActions(null, listener);
         GitRemoteHeadRefAction refAction = null;
@@ -527,7 +548,7 @@ public class AbstractGitSCMSourceTest {
         sampleRepo.git("tag", "v1");
         String v1 = sampleRepo.head();
         sampleRepo.write("file", "v2");
-        sampleRepo.git("commit", "--all", "--message=v2"); // master
+        sampleRepo.git("commit", "--all", "--message=v2"); // default branch
         sampleRepo.git("checkout", "-b", "dev");
         sampleRepo.write("file", "v3");
         sampleRepo.git("commit", "--all", "--message=v3"); // dev
@@ -537,7 +558,7 @@ public class AbstractGitSCMSourceTest {
         source.setTraits(Arrays.asList(new BranchDiscoveryTrait(), new TagDiscoveryTrait()));
         StreamTaskListener listener = StreamTaskListener.fromStderr();
         // Test retrieval of branches:
-        assertEquals("v2", fileAt("master", run, source, listener));
+        assertEquals("v2", fileAt(sampleRepo.getDefaultBranchName(), run, source, listener));
         assertEquals("v3", fileAt("dev", run, source, listener));
         // Tags:
         assertEquals("v1", fileAt("v1", run, source, listener));
@@ -549,7 +570,7 @@ public class AbstractGitSCMSourceTest {
         assertNull(fileAt("1234567", run, source, listener));
         assertNull(fileAt("", run, source, listener));
         assertNull(fileAt("\n", run, source, listener));
-        assertThat(source.fetchRevisions(listener, null), hasItems("master", "dev", "v1"));
+        assertThat(source.fetchRevisions(listener, null), hasItems(sampleRepo.getDefaultBranchName(), "dev", "v1"));
         // we do not care to return commit hashes or other references
     }
 
@@ -562,7 +583,7 @@ public class AbstractGitSCMSourceTest {
         sampleRepo.git("tag", "v1");
         String v1 = sampleRepo.head();
         sampleRepo.write("file", "v2");
-        sampleRepo.git("commit", "--all", "--message=v2"); // master
+        sampleRepo.git("commit", "--all", "--message=v2"); // default branch
         sampleRepo.git("checkout", "-b", "dev");
         sampleRepo.write("file", "v3");
         sampleRepo.git("commit", "--all", "--message=v3"); // dev
@@ -588,7 +609,7 @@ public class AbstractGitSCMSourceTest {
         sampleRepo.git("tag", "v1");
         String v1 = sampleRepo.head();
         sampleRepo.write("file", "v2");
-        sampleRepo.git("commit", "--all", "--message=v2"); // master
+        sampleRepo.git("commit", "--all", "--message=v2"); // default branch
         sampleRepo.git("checkout", "-b", "dev");
         sampleRepo.write("file", "v3");
         sampleRepo.git("commit", "--all", "--message=v3"); // dev
@@ -616,7 +637,7 @@ public class AbstractGitSCMSourceTest {
         sampleRepo.git("tag", "v1");
         String v1 = sampleRepo.head();
         sampleRepo.write("file", "v2");
-        sampleRepo.git("commit", "--all", "--message=v2"); // master
+        sampleRepo.git("commit", "--all", "--message=v2"); // default branch
         sampleRepo.git("checkout", "-b", "dev");
         sampleRepo.write("file", "v3");
         sampleRepo.git("commit", "--all", "--message=v3"); // dev
@@ -645,7 +666,7 @@ public class AbstractGitSCMSourceTest {
         sampleRepo.git("commit", "--all", "--message=v1");
         sampleRepo.git("tag", "v1");
         sampleRepo.write("file", "v2");
-        sampleRepo.git("commit", "--all", "--message=v2"); // master
+        sampleRepo.git("commit", "--all", "--message=v2"); // default branch
         sampleRepo.git("checkout", "-b", "dev");
         String v2 = sampleRepo.head();
         sampleRepo.write("file", "v3");
@@ -681,7 +702,7 @@ public class AbstractGitSCMSourceTest {
         sampleRepo.git("tag", "v1");
         String v1 = sampleRepo.head();
         sampleRepo.write("file", "v2");
-        sampleRepo.git("commit", "--all", "--message=v2"); // master
+        sampleRepo.git("commit", "--all", "--message=v2"); // default branch
         sampleRepo.git("checkout", "-b", "dev");
         sampleRepo.write("file", "v3");
         sampleRepo.git("commit", "--all", "--message=v3"); // dev
@@ -711,7 +732,7 @@ public class AbstractGitSCMSourceTest {
         sampleRepo.git("tag", "v1");
         String v1 = sampleRepo.head();
         sampleRepo.write("file", "v2");
-        sampleRepo.git("commit", "--all", "--message=v2"); // master
+        sampleRepo.git("commit", "--all", "--message=v2"); // default branch
         sampleRepo.git("checkout", "-b", "dev");
         sampleRepo.write("file", "v3");
         sampleRepo.git("commit", "--all", "--message=v3"); // dev
@@ -738,7 +759,7 @@ public class AbstractGitSCMSourceTest {
         sampleRepo.git("tag", "v1");
         String v1 = sampleRepo.head();
         sampleRepo.write("file", "v2");
-        sampleRepo.git("commit", "--all", "--message=v2"); // master
+        sampleRepo.git("commit", "--all", "--message=v2"); // default branch
         sampleRepo.git("checkout", "-b", "dev");
         sampleRepo.write("file", "v3");
         sampleRepo.git("commit", "--all", "--message=v3"); // dev
@@ -779,7 +800,7 @@ public class AbstractGitSCMSourceTest {
         sampleRepo.git("tag", "v1");
         String v1 = sampleRepo.head();
         sampleRepo.write("file", "v2");
-        sampleRepo.git("commit", "--all", "--message=v2"); // master
+        sampleRepo.git("commit", "--all", "--message=v2"); // default branch
         sampleRepo.git("checkout", "-b", "dev");
         sampleRepo.write("file", "v3");
         sampleRepo.git("commit", "--all", "--message=v3"); // dev
@@ -819,7 +840,7 @@ public class AbstractGitSCMSourceTest {
         sampleRepo.git("tag", "v1");
         String v1 = sampleRepo.head();
         sampleRepo.write("file", "v2");
-        sampleRepo.git("commit", "--all", "--message=v2"); // master
+        sampleRepo.git("commit", "--all", "--message=v2"); // default branch
         sampleRepo.git("checkout", "-b", "dev");
         sampleRepo.write("file", "v3");
         sampleRepo.git("commit", "--all", "--message=v3"); // dev
@@ -841,7 +862,7 @@ public class AbstractGitSCMSourceTest {
                 equalTo("custom-1"),
                 equalTo("v1"),
                 equalTo("dev"),
-                equalTo("master")
+                equalTo(sampleRepo.getDefaultBranchName())
         ));
     }
 
@@ -851,10 +872,10 @@ public class AbstractGitSCMSourceTest {
     public void pruneRemovesDeletedBranches() throws Exception {
         sampleRepo.init();
 
-        /* Write a file to the master branch */
-        sampleRepo.write("master-file", "master-content-" + UUID.randomUUID().toString());
-        sampleRepo.git("add", "master-file");
-        sampleRepo.git("commit", "--message=master-branch-commit-message");
+        /* Write a file to the default branch */
+        sampleRepo.write("default-branch-file", "default-branch-content-" + UUID.randomUUID().toString());
+        sampleRepo.git("add", "default-branch-file");
+        sampleRepo.git("commit", "--message=default-branch-commit-message");
 
         /* Write a file to the dev branch */
         sampleRepo.git("checkout", "-b", "dev");
@@ -866,24 +887,24 @@ public class AbstractGitSCMSourceTest {
         GitSCMSource source = new GitSCMSource(null, sampleRepo.toString(), "", "*", "", true);
         TaskListener listener = StreamTaskListener.fromStderr();
         // SCMHeadObserver.Collector.result is a TreeMap so order is predictable:
-        assertEquals(GitBranchSCMHead_DEV_MASTER, source.fetch(listener).toString());
+        assertEquals(GitBranchSCMHead_DEV_DEFAULT_BRANCH, source.fetch(listener).toString());
         // And reuse cache:
-        assertEquals(GitBranchSCMHead_DEV_MASTER, source.fetch(listener).toString());
+        assertEquals(GitBranchSCMHead_DEV_DEFAULT_BRANCH, source.fetch(listener).toString());
 
         /* Create dev2 branch and write a file to it */
-        sampleRepo.git("checkout", "-b", "dev2", "master");
+        sampleRepo.git("checkout", "-b", "dev2", sampleRepo.getDefaultBranchName());
         sampleRepo.write("dev2-file", "dev2-content-" + UUID.randomUUID().toString());
         sampleRepo.git("add", "dev2-file");
         sampleRepo.git("commit", "--message=dev2-branch-commit-message");
 
         // Verify new branch is visible
-        assertEquals(GitBranchSCMHead_DEV_DEV2_MASTER, source.fetch(listener).toString());
+        assertEquals(GitBranchSCMHead_DEV_DEV2_DEFAULT_BRANCH, source.fetch(listener).toString());
 
         /* Delete the dev branch */
         sampleRepo.git("branch", "-D", "dev");
 
         /* Fetch and confirm dev branch was pruned */
-        assertEquals("[GitBranchSCMHead{name='dev2', ref='refs/heads/dev2'}, GitBranchSCMHead{name='master', ref='refs/heads/master'}]", source.fetch(listener).toString());
+        assertEquals("[GitBranchSCMHead{name='dev2', ref='refs/heads/dev2'}, GitBranchSCMHead{name='" + defaultBranchName + "', ref='refs/heads/" + defaultBranchName + "'}]", source.fetch(listener).toString());
     }
 
     @Test
@@ -891,10 +912,10 @@ public class AbstractGitSCMSourceTest {
     public void testSpecificRevisionBuildChooser() throws Exception {
         sampleRepo.init();
 
-        /* Write a file to the master branch */
-        sampleRepo.write("master-file", "master-content-" + UUID.randomUUID().toString());
-        sampleRepo.git("add", "master-file");
-        sampleRepo.git("commit", "--message=master-branch-commit-message");
+        /* Write a file to the default branch */
+        sampleRepo.write("default-branch-file", "default-branch-content-" + UUID.randomUUID().toString());
+        sampleRepo.git("add", "default-branch-file");
+        sampleRepo.git("commit", "--message=default-branch-commit-message");
 
         /* Fetch from sampleRepo */
         GitSCMSource source = new GitSCMSource(sampleRepo.toString());
@@ -912,7 +933,7 @@ public class AbstractGitSCMSourceTest {
                 )
         ));
 
-        SCMHead head = new SCMHead("master");
+        SCMHead head = new SCMHead(sampleRepo.getDefaultBranchName());
         SCMRevision revision = new AbstractGitSCMSource.SCMRevisionImpl(head, "beaded4deed2bed4feed2deaf78933d0f97a5a34");
 
         // because we are ignoring push notifications we also ignore commits
@@ -952,7 +973,7 @@ public class AbstractGitSCMSourceTest {
         sampleRepo.init();
 
         GitSCMSource source = new GitSCMSource(null, sampleRepo.toString(), "", "upstream", null, "*", "", true);
-        SCMHead head = new SCMHead("master");
+        SCMHead head = new SCMHead(sampleRepo.getDefaultBranchName());
         GitSCM scm = (GitSCM) source.build(head);
         List<UserRemoteConfig> configs = scm.getUserRemoteConfigs();
         assertEquals(1, configs.size());
@@ -967,7 +988,7 @@ public class AbstractGitSCMSourceTest {
         sampleRepo.init();
 
         GitSCMSource source = new GitSCMSource(null, sampleRepo.toString(), "", null, "+refs/heads/*:refs/remotes/origin/*          +refs/merge-requests/*/head:refs/remotes/origin/merge-requests/*", "*", "", true);
-        SCMHead head = new SCMHead("master");
+        SCMHead head = new SCMHead(sampleRepo.getDefaultBranchName());
         GitSCM scm = (GitSCM) source.build(head);
         List<UserRemoteConfig> configs = scm.getUserRemoteConfigs();
 
@@ -1063,7 +1084,7 @@ public class AbstractGitSCMSourceTest {
         source.fetch("v1.2", listener, null);
 
         //Remove branch x
-        sampleRepo.git("checkout", "master");
+        sampleRepo.git("checkout", sampleRepo.getDefaultBranchName());
         sampleRepo.git("push", source.getRemote(), "--delete", branch);
 
         //Create branch x/x (ref lock engaged)
@@ -1095,7 +1116,7 @@ public class AbstractGitSCMSourceTest {
             }, new SCMHeadObserver.Collector(), listener);
 
             assertThat(c.result().keySet(), containsInAnyOrder(
-                    hasProperty("name", equalTo("master")),
+                    hasProperty("name", equalTo(sampleRepo.getDefaultBranchName())),
                     hasProperty("name", equalTo("dev"))
             ));
         } catch(MissingObjectException me) {

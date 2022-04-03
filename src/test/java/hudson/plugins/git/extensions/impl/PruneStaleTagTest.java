@@ -32,11 +32,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
+import jenkins.plugins.git.CliGitCommand;
 import org.apache.commons.io.FileUtils;
+import org.jenkinsci.plugins.gitclient.Git;
 import org.jenkinsci.plugins.gitclient.GitClient;
 import org.jenkinsci.plugins.gitclient.TestCliGitAPIImpl;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -59,6 +62,28 @@ public class PruneStaleTagTest {
 
     private TaskListener listener;
     private Run<?, ?> run;
+
+    static String defaultBranchName = "mast" + "er"; // Intentionally split string
+
+    /**
+     * Determine the global default branch name.
+     * Command line git is moving towards more inclusive naming.
+     * Git 2.32.0 honors the configuration variable `init.defaultBranch` and uses it for the name of the initial branch.
+     * This method reads the global configuration and uses it to set the value of `defaultBranchName`.
+     */
+    @BeforeClass
+    public static void computeDefaultBranchName() throws Exception {
+        File configDir = java.nio.file.Files.createTempDirectory("readGitConfig").toFile();
+        CliGitCommand getDefaultBranchNameCmd = new CliGitCommand(Git.with(TaskListener.NULL, new hudson.EnvVars()).in(configDir).using("git").getClient());
+        String[] output = getDefaultBranchNameCmd.runWithoutAssert("config", "--get", "init.defaultBranch");
+        for (String s : output) {
+            String result = s.trim();
+            if (result != null && !result.isEmpty()) {
+                defaultBranchName = result;
+            }
+        }
+       Assert.assertTrue("Failed to delete temporary readGitConfig directory", configDir.delete());
+    }
 
     @Before
     public void setup() throws Exception {
@@ -220,7 +245,7 @@ public class PruneStaleTagTest {
          */
         String gitURL = "file://" + remoteRepository.toURI().getPath();
         localClient.clone(gitURL, "origin", false, "+refs/heads/*:refs/remotes/origin/*");
-        localClient.checkoutBranch("master", "refs/remotes/origin/master");
+        localClient.checkoutBranch(defaultBranchName, "refs/remotes/origin/" + defaultBranchName);
         return localClient;
     }
 

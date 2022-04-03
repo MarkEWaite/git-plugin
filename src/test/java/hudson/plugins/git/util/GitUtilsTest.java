@@ -59,8 +59,8 @@ public class GitUtilsTest {
     @ClassRule
     public static TemporaryFolder repoParentFolder = new TemporaryFolder();
 
-    private static final String[] HEAD_BRANCH_NAMES = {
-        "master",
+    private static String[] headBranchNames = {
+        "mast" + "er", // Will be replaced with the default branch name
         "sally-2",
         "baker-1",
         "able-4"
@@ -109,6 +109,7 @@ public class GitUtilsTest {
         originRepo.git("tag", PRIOR_TAG_NAME_1);
         originRepo.git("tag", "-a", PRIOR_TAG_NAME_2, "-m", "Annotated tag " + PRIOR_TAG_NAME_2);
         priorHeadId = ObjectId.fromString(originRepo.head());
+        headBranchNames[0] = originRepo.getDefaultBranchName();
 
         originRepo.git("checkout", "-b", OLDER_BRANCH_NAME);
         branchList = new ArrayList<>();
@@ -119,7 +120,7 @@ public class GitUtilsTest {
         priorBranchSpecList = new ArrayList<>();
         priorBranchSpecList.add(new BranchSpec(OLDER_BRANCH_NAME));
 
-        originRepo.git("checkout", "master");
+        originRepo.git("checkout", originRepo.getDefaultBranchName());
         originRepo.write(fileName, "This is the " + HEAD_TAG_NAME_0 + " README file " + RANDOM.nextInt());
         originRepo.git("add", fileName);
         originRepo.git("commit", "-m", "Adding " + fileName + " tagged " + HEAD_TAG_NAME_0, fileName);
@@ -135,29 +136,29 @@ public class GitUtilsTest {
         headId = ObjectId.fromString(originRepo.head());
         branchSpecList = new ArrayList<>();
         branchList = new ArrayList<>();
-        branchSpecList.add(new BranchSpec("master"));
+        branchSpecList.add(new BranchSpec(originRepo.getDefaultBranchName()));
         branchSpecList.add(new BranchSpec("refs/tags/" + HEAD_TAG_NAME_0));
         branchSpecList.add(new BranchSpec("refs/tags/" + HEAD_TAG_NAME_1));
         branchSpecList.add(new BranchSpec("refs/tags/" + HEAD_TAG_NAME_2));
-        branchList.add(new Branch("master", headId));
+        branchList.add(new Branch(originRepo.getDefaultBranchName(), headId));
         branchList.add(new Branch("refs/tags/" + HEAD_TAG_NAME_0, headId));
         branchList.add(new Branch("refs/tags/" + HEAD_TAG_NAME_1, headId));
         branchList.add(new Branch("refs/tags/" + HEAD_TAG_NAME_2, headId));
-        for (String branchName : HEAD_BRANCH_NAMES) {
-            if (!branchName.equals("master")) {
+        for (String branchName : headBranchNames) {
+            if (!branchName.equals(originRepo.getDefaultBranchName())) {
                 originRepo.git("checkout", "-b", branchName);
                 branchSpecList.add(new BranchSpec(branchName));
                 branchList.add(new Branch(branchName, headId));
             }
         }
-        originRepo.git("checkout", "master"); // Master branch as current branch in origin repo
+        originRepo.git("checkout", originRepo.getDefaultBranchName()); // Default branch as current branch in origin repo
         headRevision = new Revision(headId, branchList);
 
         File gitDir = repoParentFolder.newFolder("test-repo");
         gitClient = Git.with(NULL_LISTENER, ENV).in(gitDir).using("git").getClient();
         gitClient.init();
         gitClient.clone_().url(originRepo.fileUrl()).repositoryName("origin").execute();
-        gitClient.checkout("origin/master", "master");
+        gitClient.checkout("origin/" + originRepo.getDefaultBranchName(), originRepo.getDefaultBranchName());
     }
 
     @Before
@@ -209,7 +210,7 @@ public class GitUtilsTest {
 
     @Test
     public void testGetRevisionContainingBranch() throws Exception {
-        for (String branchName : HEAD_BRANCH_NAMES) {
+        for (String branchName : headBranchNames) {
             Revision revision = gitUtils.getRevisionContainingBranch("origin/" + branchName);
             assertThat(revision, is(headRevision));
         }
@@ -331,8 +332,8 @@ public class GitUtilsTest {
     }
 
     private Set<String> getExpectedNames() {
-        Set<String> names = new HashSet<>(HEAD_BRANCH_NAMES.length + tagNames.length + 1);
-        for (String branchName : HEAD_BRANCH_NAMES) {
+        Set<String> names = new HashSet<>(headBranchNames.length + tagNames.length + 1);
+        for (String branchName : headBranchNames) {
             names.add("origin/" + branchName);
         }
         names.add("origin/" + OLDER_BRANCH_NAME);

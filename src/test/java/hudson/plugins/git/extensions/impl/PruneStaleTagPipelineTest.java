@@ -29,6 +29,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import hudson.plugins.git.GitSCM;
+import jenkins.plugins.git.CliGitCommand;
 import org.apache.commons.io.FileUtils;
 import org.jenkinsci.plugins.gitclient.Git;
 import org.jenkinsci.plugins.gitclient.GitClient;
@@ -52,8 +53,6 @@ import hudson.Functions;
 import hudson.model.Result;
 import hudson.model.TaskListener;
 import hudson.util.LogTaskListener;
-
-import jenkins.plugins.git.CliGitCommand;
 
 public class PruneStaleTagPipelineTest {
 
