@@ -1137,7 +1137,7 @@ public class GitSCMTest extends AbstractGitTestCase {
 
     @Test
     public void testCleanBeforeCheckout() throws Exception {
-    	FreeStyleProject p = setupProject(defaultBranchName, false, null, null, "Jane Doe", null);
+        FreeStyleProject p = setupProject(defaultBranchName, false, null, null, "Jane Doe", null);
         ((GitSCM)p.getScm()).getExtensions().add(new CleanBeforeCheckout());
 
         /* First build should not clean, since initial clone is always clean */
@@ -2127,28 +2127,28 @@ public class GitSCMTest extends AbstractGitTestCase {
     @Issue("JENKINS-25191")
     @Test
     public void testMultipleMergeFailed() throws Exception {
-    	FreeStyleProject project = setupSimpleProject(defaultBranchName);
+        FreeStyleProject project = setupSimpleProject(defaultBranchName);
     	
     	GitSCM scm = new GitSCM(
     			createRemoteRepositories(),
-    			Collections.singletonList(new BranchSpec(defaultBranchName)),
+                        Collections.singletonList(new BranchSpec(defaultBranchName)),
     			null, null,
-    			Collections.<GitSCMExtension>emptyList());
+                        Collections.<GitSCMExtension>emptyList());
     	project.setScm(scm);
 	scm.getExtensions().add(new PreBuildMerge(new UserMergeOptions("origin", "integration1", "", MergeCommand.GitPluginFastForwardMode.FF)));
 	scm.getExtensions().add(new PreBuildMerge(new UserMergeOptions("origin", "integration2", "", MergeCommand.GitPluginFastForwardMode.FF)));
         addChangelogToBranchExtension(scm);
     	
     	commit("dummyFile", johnDoe, "Initial Commit");
-    	testRepo.git.branch("integration1");
-    	testRepo.git.branch("integration2");
+        testRepo.git.branch("integration1");
+        testRepo.git.branch("integration2");
     	build(project, Result.SUCCESS);
     	
     	final String commitFile = "commitFile";
-    	testRepo.git.checkoutBranch("integration1",defaultBranchName);
+        testRepo.git.checkoutBranch("integration1",defaultBranchName);
     	commit(commitFile,"abc", johnDoe, "merge conflict with integration2");
     	
-    	testRepo.git.checkoutBranch("integration2",defaultBranchName);
+        testRepo.git.checkoutBranch("integration2",defaultBranchName);
     	commit(commitFile,"cde", johnDoe, "merge conflict with integration1");
     	
     	final FreeStyleBuild build = build(project, Result.FAILURE);
