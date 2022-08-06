@@ -99,7 +99,6 @@ public class AbstractGitProject extends AbstractGitRepository {
         }
         assertTrue("Failed to delete temporary readGitConfig directory", configDir.delete());
     }
->>>>>>> Adapt to inclusive default branch name
 
     protected FreeStyleProject setupProject(List<BranchSpec> branches, boolean authorOrCommitter) throws Exception {
         FreeStyleProject project = jenkins.createFreeStyleProject();
