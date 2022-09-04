@@ -21,7 +21,6 @@ import hudson.model.FreeStyleProject;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.plugins.git.GitSCM.DescriptorImpl;
-import hudson.plugins.git.extensions.GitSCMExtension;
 import hudson.plugins.git.extensions.impl.LocalBranch;
 
 import org.eclipse.jgit.lib.ObjectId;
@@ -125,13 +124,13 @@ public class GitTagActionTest {
                 Collections.singletonList(new BranchSpec("origin/" + defaultBranchName)),
                 null,
                 chooseGitImplementation(), // Both git implementations should work, choose randomly
-                Collections.<GitSCMExtension>emptyList());
+                Collections.emptyList());
         scm.getExtensions().add(new LocalBranch(defaultBranchName));
         p = r.createFreeStyleProject();
         p.setScm(scm);
 
         /* Add git tag action to builds for this test */
-        gitSCMDescriptor = (DescriptorImpl) scm.getDescriptor();
+        gitSCMDescriptor = scm.getDescriptor();
         gitSCMDescriptor.setAddGitTagAction(true);
 
         /* Run with no tag action defined */

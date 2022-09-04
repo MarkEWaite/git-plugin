@@ -8,7 +8,6 @@ import com.cloudbees.plugins.credentials.CredentialsStore;
 import com.cloudbees.plugins.credentials.common.StandardCredentials;
 import com.cloudbees.plugins.credentials.domains.Domain;
 import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
-import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.Launcher;
@@ -26,7 +25,6 @@ import hudson.plugins.git.extensions.impl.BuildChooserSetting;
 import hudson.plugins.git.extensions.impl.LocalBranch;
 import hudson.util.StreamTaskListener;
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -54,7 +52,6 @@ import static org.hamcrest.collection.IsIterableContainingInAnyOrder.containsInA
 import jenkins.scm.api.SCMSourceCriteria;
 import jenkins.scm.api.SCMSourceOwner;
 import jenkins.scm.api.metadata.PrimaryInstanceMetadataAction;
-import jenkins.scm.api.trait.SCMSourceTrait;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.transport.RefSpec;
@@ -78,6 +75,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
@@ -154,7 +152,7 @@ public class AbstractGitSCMSourceTest {
         TaskListener listener = StreamTaskListener.fromStderr();
         // SCMHeadObserver.Collector.result is a TreeMap so order is predictable:
         assertEquals("[]", source.fetch(listener).toString());
-        source.setTraits(Collections.<SCMSourceTrait>singletonList(new BranchDiscoveryTrait()));
+        source.setTraits(Collections.singletonList(new BranchDiscoveryTrait()));
         assertEquals(GitBranchSCMHead_DEV_DEFAULT_BRANCH, source.fetch(listener).toString());
         // And reuse cache:
         assertEquals(GitBranchSCMHead_DEV_DEFAULT_BRANCH, source.fetch(listener).toString());
@@ -182,7 +180,7 @@ public class AbstractGitSCMSourceTest {
         TaskListener listener = StreamTaskListener.fromStderr();
         // SCMHeadObserver.Collector.result is a TreeMap so order is predictable:
         assertEquals("[]", source.fetch(listener).toString());
-        source.setTraits(Collections.<SCMSourceTrait>singletonList(new BranchDiscoveryTrait()));
+        source.setTraits(Collections.singletonList(new BranchDiscoveryTrait()));
         assertEquals(GitBranchSCMHead_DEV_DEFAULT_BRANCH, source.fetch(listener).toString());
         // And reuse cache:
         assertEquals(GitBranchSCMHead_DEV_DEFAULT_BRANCH, source.fetch(listener).toString());
@@ -277,7 +275,7 @@ public class AbstractGitSCMSourceTest {
         TaskListener listener = StreamTaskListener.fromStderr();
         // SCMHeadObserver.Collector.result is a TreeMap so order is predictable:
         assertEquals("[]", source.fetch(listener).toString());
-        source.setTraits(Collections.<SCMSourceTrait>singletonList(new TagDiscoveryTrait()));
+        source.setTraits(Collections.singletonList(new TagDiscoveryTrait()));
         assertEquals("[SCMHead{'annotated'}, SCMHead{'lightweight'}]", source.fetch(listener).toString());
         // And reuse cache:
         assertEquals("[SCMHead{'annotated'}, SCMHead{'lightweight'}]", source.fetch(listener).toString());
@@ -300,9 +298,9 @@ public class AbstractGitSCMSourceTest {
         source.setTraits(new ArrayList<>());
         TaskListener listener = StreamTaskListener.fromStderr();
         assertThat(source.fetchRevisions(listener, null), hasSize(0));
-        source.setTraits(Collections.<SCMSourceTrait>singletonList(new BranchDiscoveryTrait()));
+        source.setTraits(Collections.singletonList(new BranchDiscoveryTrait()));
         assertThat(source.fetchRevisions(listener, null), containsInAnyOrder("dev", sampleRepo.getDefaultBranchName()));
-        source.setTraits(Collections.<SCMSourceTrait>singletonList(new TagDiscoveryTrait()));
+        source.setTraits(Collections.singletonList(new TagDiscoveryTrait()));
         assertThat(source.fetchRevisions(listener, null), containsInAnyOrder("annotated", "lightweight"));
         source.setTraits(Arrays.asList(new BranchDiscoveryTrait(), new TagDiscoveryTrait()));
         assertThat(source.fetchRevisions(listener, null), containsInAnyOrder("dev", sampleRepo.getDefaultBranchName(), "annotated", "lightweight"));
@@ -816,12 +814,7 @@ public class AbstractGitSCMSourceTest {
         StreamTaskListener listener = StreamTaskListener.fromStderr();
 
         final SCMHeadObserver.Collector collector =
-        source.fetch(new SCMSourceCriteria() {
-            @Override
-            public boolean isHead(@NonNull Probe probe, @NonNull TaskListener listener) throws IOException {
-                return true;
-            }
-        }, new SCMHeadObserver.Collector(), listener);
+        source.fetch((SCMSourceCriteria) (probe, listener1) -> true, new SCMHeadObserver.Collector(), listener);
 
         final Map<SCMHead, SCMRevision> result = collector.result();
         assertThat(result.entrySet(), hasSize(4));
@@ -873,13 +866,13 @@ public class AbstractGitSCMSourceTest {
         sampleRepo.init();
 
         /* Write a file to the default branch */
-        sampleRepo.write("default-branch-file", "default-branch-content-" + UUID.randomUUID().toString());
+        sampleRepo.write("default-branch-file", "default-branch-content-" + UUID.randomUUID());
         sampleRepo.git("add", "default-branch-file");
         sampleRepo.git("commit", "--message=default-branch-commit-message");
 
         /* Write a file to the dev branch */
         sampleRepo.git("checkout", "-b", "dev");
-        sampleRepo.write("dev-file", "dev-content-" + UUID.randomUUID().toString());
+        sampleRepo.write("dev-file", "dev-content-" + UUID.randomUUID());
         sampleRepo.git("add", "dev-file");
         sampleRepo.git("commit", "--message=dev-branch-commit-message");
 
@@ -893,7 +886,7 @@ public class AbstractGitSCMSourceTest {
 
         /* Create dev2 branch and write a file to it */
         sampleRepo.git("checkout", "-b", "dev2", sampleRepo.getDefaultBranchName());
-        sampleRepo.write("dev2-file", "dev2-content-" + UUID.randomUUID().toString());
+        sampleRepo.write("dev2-file", "dev2-content-" + UUID.randomUUID());
         sampleRepo.git("add", "dev2-file");
         sampleRepo.git("commit", "--message=dev2-branch-commit-message");
 
@@ -912,14 +905,14 @@ public class AbstractGitSCMSourceTest {
     public void testSpecificRevisionBuildChooser() throws Exception {
         sampleRepo.init();
 
-        /* Write a file to the default branch */
-        sampleRepo.write("default-branch-file", "default-branch-content-" + UUID.randomUUID().toString());
+        /* Write a file to the master branch */
+        sampleRepo.write("default-branch-file", "default-branch-content-" + UUID.randomUUID());
         sampleRepo.git("add", "default-branch-file");
-        sampleRepo.git("commit", "--message=default-branch-commit-message");
+        sampleRepo.git("commit", "--message=default-branch-branch-commit-message");
 
         /* Fetch from sampleRepo */
         GitSCMSource source = new GitSCMSource(sampleRepo.toString());
-        source.setTraits(Collections.<SCMSourceTrait>singletonList(new IgnoreOnPushNotificationTrait()));
+        source.setTraits(Collections.singletonList(new IgnoreOnPushNotificationTrait()));
         List<GitSCMExtension> extensions = new ArrayList<>();
         assertThat(source.getExtensions(), is(empty()));
         LocalBranch localBranchExtension = new LocalBranch("**");
@@ -1007,14 +1000,8 @@ public class AbstractGitSCMSourceTest {
 
         createRefLockEnvironment(listener, source);
 
-        try {
-            source.fetch("v1.2", listener, null);
-        } catch (GitException e){
-            assertFalse(e.getMessage().contains("--prune"));
-            return;
-        }
-        //fail if ref lock does not occur
-        fail();
+        final GitException e = assertThrows(GitException.class, () -> source.fetch("v1.2", listener, null));
+        assertFalse(e.getMessage().contains("--prune"));
     }
 
     @Test
@@ -1025,14 +1012,8 @@ public class AbstractGitSCMSourceTest {
 
         createRefLockEnvironment(listener, source);
 
-        try {
-            source.fetch("v1.2", listener, null);
-        } catch (GitException e){
-            assertFalse(e.getMessage().contains("--prune"));
-            return;
-        }
-        //fail if ref lock does not occur
-        fail();
+        final GitException e = assertThrows(GitException.class, () -> source.fetch("v1.2", listener, null));
+        assertFalse(e.getMessage().contains("--prune"));
     }
 
     @Test
@@ -1106,14 +1087,9 @@ public class AbstractGitSCMSourceTest {
         sharedSampleRepo = sampleRepo;
         try {
             GitSCMSource source = new GitSCMSource(sampleRepo.toString());
-            source.setTraits(Arrays.<SCMSourceTrait>asList(new BranchDiscoveryTrait()));
+            source.setTraits(Collections.singletonList(new BranchDiscoveryTrait()));
             TaskListener listener = StreamTaskListener.fromStderr();
-            SCMHeadObserver.Collector c = source.fetch(new SCMSourceCriteria() {
-                @Override
-                public boolean isHead(@NonNull Probe probe, @NonNull TaskListener listener) throws IOException {
-                    return true;
-                }
-            }, new SCMHeadObserver.Collector(), listener);
+            SCMHeadObserver.Collector c = source.fetch((SCMSourceCriteria) (probe, listener1) -> true, new SCMHeadObserver.Collector(), listener);
 
             assertThat(c.result().keySet(), containsInAnyOrder(
                     hasProperty("name", equalTo(sampleRepo.getDefaultBranchName())),
