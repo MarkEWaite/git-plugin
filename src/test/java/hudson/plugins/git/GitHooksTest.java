@@ -62,9 +62,6 @@ public class GitHooksTest extends AbstractGitTestCase {
         lr.record(GitHooksConfiguration.class.getName(), Level.ALL).capture(1024);
         GitTool tool = new GitTool("my-git", "git", Collections.<ToolProperty<?>>emptyList());
         rule.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool);
-        //Jenkins 2.308 changes the default label to "built-in" causing test failures when testing with newer core
-        // e.g. java 17 testing
-        rule.jenkins.setLabelString("master");
         rule.jenkins.setNumExecutors(3); //In case this changes in the future as well.
     }
 
