@@ -112,7 +112,7 @@ public class CliGitCommand {
         }
     }
 
-    private String[] runWithoutAssert(String... arguments) throws IOException, InterruptedException {
+    public String[] runWithoutAssert(String... arguments) throws IOException, InterruptedException {
         args = new ArgumentListBuilder("git");
         args.add(arguments);
         return run(false);
