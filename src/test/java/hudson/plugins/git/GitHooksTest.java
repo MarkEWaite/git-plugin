@@ -89,7 +89,7 @@ public class GitHooksTest extends AbstractGitTestCase {
         final WorkflowJob job = rule.createProject(WorkflowJob.class);
         final GitSCM scm = new GitSCM(
                 this.createRemoteRepositories(),
-                Collections.singletonList(new BranchSpec("master")),
+                Collections.singletonList(new BranchSpec(sampleRepo.getDefaultBranchName())),
                 null, "my-git", Collections.emptyList()
         );
         CpsScmFlowDefinition definition = new CpsScmFlowDefinition(scm, "Jenkinsfile");
@@ -193,7 +193,7 @@ public class GitHooksTest extends AbstractGitTestCase {
     public void testPipelineCheckoutController() throws Exception {
         assumeNotJenkinsCiWindows();
 
-        final WorkflowJob job = setupAndRunPipelineCheckout("master");
+        final WorkflowJob job = setupAndRunPipelineCheckout("built-in");
         WorkflowRun run;
         commit("Commit3", janeDoe, "Commit number 3");
         GitHooksConfiguration.get().setAllowedOnController(true);
@@ -248,7 +248,7 @@ public class GitHooksTest extends AbstractGitTestCase {
         final String uri = testRepo.gitDir.getAbsolutePath().replace("\\", "/");
         job.setDefinition(new CpsFlowDefinition(lines(
                 "node('" + node + "') {",
-                "  checkout([$class: 'GitSCM', branches: [[name: '*/master']], userRemoteConfigs: [[url: '" + uri + "']]])",
+                "  checkout([$class: 'GitSCM', branches: [[name: '*/" + sampleRepo.getDefaultBranchName() + "']], userRemoteConfigs: [[url: '" + uri + "']]])",
                 "  if (!fileExists('.git/hooks/post-checkout')) {",
                 "    writeFile file: '.git/hooks/post-checkout', text: \"#!/bin/sh\\necho h4xor3d\"",
                 "    if (isUnix()) {",
@@ -256,9 +256,9 @@ public class GitHooksTest extends AbstractGitTestCase {
                 "    }",
                 "  } else {",
                 "    if (isUnix()) {",
-                "      sh 'git checkout -B test origin/master'",
+                "      sh 'git checkout -B test origin/" + sampleRepo.getDefaultBranchName() + "'",
                 "    } else {",
-                "      bat 'git.exe checkout -B test origin/master'",
+                "      bat 'git.exe checkout -B test origin/" + sampleRepo.getDefaultBranchName() + "'",
                 "    }",
                 "  }",
                 "}")
