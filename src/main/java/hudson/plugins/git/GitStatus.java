@@ -12,14 +12,12 @@ import hudson.scm.SCM;
 import hudson.security.ACL;
 import hudson.security.ACLContext;
 import hudson.triggers.SCMTrigger;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
@@ -27,6 +25,7 @@ import static javax.servlet.http.HttpServletResponse.SC_OK;
 import jenkins.model.Jenkins;
 import jenkins.scm.api.SCMEvent;
 import jenkins.triggers.SCMTriggerItem;
+import jenkins.util.SystemProperties;
 import org.apache.commons.lang.StringUtils;
 import static org.apache.commons.lang.StringUtils.isNotEmpty;
 
@@ -39,6 +38,9 @@ import org.kohsuke.stapler.*;
  */
 @Extension
 public class GitStatus implements UnprotectedRootAction {
+    static /* not final */ String NOTIFY_COMMIT_ACCESS_CONTROL =
+            SystemProperties.getString(GitStatus.class.getName() + ".NOTIFY_COMMIT_ACCESS_CONTROL");
+
     @Override
     public String getDisplayName() {
         return "Git";
@@ -113,8 +115,25 @@ public class GitStatus implements UnprotectedRootAction {
     }
 
     public HttpResponse doNotifyCommit(HttpServletRequest request, @QueryParameter(required=true) String url,
-                                       @QueryParameter(required=false) String branches,
-                                       @QueryParameter(required=false) String sha1) throws ServletException, IOException {
+                                       @QueryParameter() String branches, @QueryParameter() String sha1,
+                                       @QueryParameter() String token) {
+        if (!"disabled".equalsIgnoreCase(NOTIFY_COMMIT_ACCESS_CONTROL)
+                && !"disabled-for-polling".equalsIgnoreCase(NOTIFY_COMMIT_ACCESS_CONTROL)) {
+            if (StringUtils.isEmpty(token)) {
+                return HttpResponses.errorWithoutStack(401, "An access token is required. Please refer to Git plugin documentation (https://plugins.jenkins.io/git/#plugin-content-push-notification-from-repository) for details.");
+            }
+            if (!ApiTokenPropertyConfiguration.get().isValidApiToken(token)) {
+                return HttpResponses.errorWithoutStack(403, "Invalid access token");
+            }
+        }
+        if ("disabled-for-polling".equalsIgnoreCase(NOTIFY_COMMIT_ACCESS_CONTROL) && StringUtils.isNotEmpty(sha1)) {
+            if (StringUtils.isEmpty(token)) {
+                return HttpResponses.errorWithoutStack(401, "An access token is required when using the sha1 parameter. Please refer to Git plugin documentation (https://plugins.jenkins.io/git/#plugin-content-push-notification-from-repository) for details.");
+            } 
+            if (!ApiTokenPropertyConfiguration.get().isValidApiToken(token)) {
+                return HttpResponses.errorWithoutStack(403, "Invalid access token");
+            }
+        }
         lastURL = url;
         lastBranches = branches;
         if(StringUtils.isNotBlank(sha1)&&!SHA1_PATTERN.matcher(sha1.trim()).matches()){
@@ -197,7 +216,7 @@ public class GitStatus implements UnprotectedRootAction {
     }
 
     /**
-     * Contributes to a {@link #doNotifyCommit(HttpServletRequest, String, String, String)} response.
+     * Contributes to a {@link #doNotifyCommit(HttpServletRequest, String, String, String, String)} response.
      *
      * @since 1.4.1
      */
@@ -371,7 +390,9 @@ public class GitStatus implements UnprotectedRootAction {
 
                             SCMTrigger trigger = scmTriggerItem.getSCMTrigger();
                             if (trigger == null || trigger.isIgnorePostCommitHooks()) {
-                                LOGGER.log(Level.INFO, "no trigger, or post-commit hooks disabled, on {0}", project.getFullDisplayName());
+                                if (LOGGER.isLoggable(Level.FINE)) {
+                                    LOGGER.log(Level.FINE, "no trigger, or post-commit hooks disabled, on {0}", project.getFullDisplayName());
+                                }
                                 continue;
                             }
 
@@ -437,7 +458,9 @@ public class GitStatus implements UnprotectedRootAction {
                                      * NOTE: This is not scheduling the build, just polling for changes
                                      * If the polling detects changes, it will schedule the build
                                      */
-                                    LOGGER.log(Level.INFO, "Triggering the polling of {0}", project.getFullDisplayName());
+                                    if (LOGGER.isLoggable(Level.FINE)) {
+                                        LOGGER.log(Level.FINE, "Triggering the polling of {0}", project.getFullDisplayName());
+                                    }
                                     trigger.run();
                                     result.add(new PollingScheduledResponseContributor(project));
                                     break SCMS; // no need to trigger the same project twice, so do not consider other GitSCMs in it

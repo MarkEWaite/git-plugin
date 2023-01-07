@@ -54,16 +54,23 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
+import static org.junit.Assume.assumeTrue;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.Stopwatch;
+import org.junit.rules.TestName;
+import org.junit.runner.OrderWith;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
+@OrderWith(RandomOrder.class)
 public class GitStepTest {
 
     @ClassRule
@@ -79,8 +86,25 @@ public class GitStepTest {
         gitCmd.setDefaults();
     }
 
+    @ClassRule
+    public static Stopwatch stopwatch = new Stopwatch();
+    @Rule
+    public TestName testName = new TestName();
+
+    private static final int MAX_SECONDS_FOR_THESE_TESTS = 200;
+
+    private boolean isTimeAvailable() {
+        String env = System.getenv("CI");
+        if (env == null || !Boolean.parseBoolean(env)) {
+            // Run all tests when not in CI environment
+            return true;
+        }
+        return stopwatch.runtime(SECONDS) <= MAX_SECONDS_FOR_THESE_TESTS;
+    }
+
     @Test
     public void roundtrip() throws Exception {
+        assumeTrue("Test class max time " + MAX_SECONDS_FOR_THESE_TESTS + " exceeded", isTimeAvailable());
         GitStep step = new GitStep("git@github.com:jenkinsci/workflow-plugin.git");
         Step roundtrip = new StepConfigTester(r).configRoundTrip(step);
         r.assertEqualDataBoundBeans(step, roundtrip);
@@ -88,6 +112,7 @@ public class GitStepTest {
 
     @Test
     public void roundtrip_withcredentials() throws Exception {
+        assumeTrue("Test class max time " + MAX_SECONDS_FOR_THESE_TESTS + " exceeded", isTimeAvailable());
         IdCredentials c = new UsernamePasswordCredentialsImpl(CredentialsScope.GLOBAL, null, null, "user", "pass");
         CredentialsProvider.lookupStores(r.jenkins).iterator().next()
                 .addCredentials(Domain.global(), c);
@@ -99,6 +124,7 @@ public class GitStepTest {
 
     @Test
     public void basicCloneAndUpdate() throws Exception {
+        assumeTrue("Test class max time " + MAX_SECONDS_FOR_THESE_TESTS + " exceeded", isTimeAvailable());
         sampleRepo.init();
         WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "basicCloneAndUpdate");
         r.createOnlineSlave(Label.get("remote"));
@@ -109,13 +135,13 @@ public class GitStepTest {
             "        archive '**'\n" +
             "    }\n" +
             "}", true));
-        WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        WorkflowRun b = r.buildAndAssertSuccess(p);
         r.waitForMessage("Cloning the remote Git repository", b); // GitSCM.retrieveChanges
         assertTrue(b.getArtifactManager().root().child("file").isFile());
         sampleRepo.write("nextfile", "");
         sampleRepo.git("add", "nextfile");
         sampleRepo.git("commit", "--message=next");
-        b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        b = r.buildAndAssertSuccess(p);
         r.waitForMessage("Fetching changes from the remote Git repository", b); // GitSCM.retrieveChanges
         assertTrue(b.getArtifactManager().root().child("nextfile").isFile());
     }
@@ -151,6 +177,7 @@ public class GitStepTest {
 
     @Test
     public void changelogAndPolling() throws Exception {
+        assumeTrue("Test class max time " + MAX_SECONDS_FOR_THESE_TESTS + " exceeded", isTimeAvailable());
         sampleRepo.init();
         WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "changelogAndPolling");
         p.addTrigger(new SCMTrigger("")); // no schedule, use notifyCommit only
@@ -159,10 +186,12 @@ public class GitStepTest {
             "node('remote') {\n" +
             "    ws {\n" +
             "        git($/" + sampleRepo + "/$)\n" +
+            "        def tokenBranch = tm '${GIT_BRANCH,fullName=false}'\n" +
+            "        echo \"token macro expanded branch is ${tokenBranch}\"\n" +
             "    }\n" +
             "}", true));
-        WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
-        r.waitForMessage("Cloning the remote Git repository", b);
+        WorkflowRun b = r.buildAndAssertSuccess(p);
+        r.waitForMessage("token macro expanded branch is remotes/origin/master", b); // Unexpected but current behavior
         sampleRepo.write("nextfile", "");
         sampleRepo.git("add", "nextfile");
         sampleRepo.git("commit", "--message=next");
@@ -170,6 +199,7 @@ public class GitStepTest {
         b = p.getLastBuild();
         assertEquals(2, b.number);
         r.waitForMessage("Fetching changes from the remote Git repository", b);
+        r.waitForMessage("token macro expanded branch is remotes/origin/master", b); // Unexpected but current behavior
         List<ChangeLogSet<? extends ChangeLogSet.Entry>> changeSets = b.getChangeSets();
         assertEquals(1, changeSets.size());
         ChangeLogSet<? extends ChangeLogSet.Entry> changeSet = changeSets.get(0);
@@ -184,6 +214,7 @@ public class GitStepTest {
 
     @Test
     public void multipleSCMs() throws Exception {
+        assumeTrue("Test class max time " + MAX_SECONDS_FOR_THESE_TESTS + " exceeded", isTimeAvailable());
         sampleRepo.init();
         otherRepo.init();
         otherRepo.write("otherfile", "");
@@ -204,7 +235,7 @@ public class GitStepTest {
             "        archive '**'\n" +
             "    }\n" +
             "}", true));
-        WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        WorkflowRun b = r.buildAndAssertSuccess(p);
         VirtualFile artifacts = b.getArtifactManager().root();
         assertTrue(artifacts.child("main/file").isFile());
         assertTrue(artifacts.child("other/otherfile").isFile());
@@ -248,6 +279,7 @@ public class GitStepTest {
     @Issue("JENKINS-29326")
     @Test
     public void identicalGitSCMs() throws Exception {
+        assumeTrue("Test class max time " + MAX_SECONDS_FOR_THESE_TESTS + " exceeded", isTimeAvailable());
         sampleRepo.init();
         otherRepo.init();
         otherRepo.write("firstfile", "");
@@ -263,7 +295,7 @@ public class GitStepTest {
             "        git($/" + otherRepo + "/$)\n" +
             "    }\n" +
             "}", true));
-        WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        WorkflowRun b = r.buildAndAssertSuccess(p);
         assertEquals(1, b.getActions(BuildData.class).size());
         assertEquals(0, b.getActions(GitTagAction.class).size());
         assertEquals(0, b.getChangeSets().size());
@@ -272,7 +304,7 @@ public class GitStepTest {
         otherRepo.write("secondfile", "");
         otherRepo.git("add", "secondfile");
         otherRepo.git("commit", "--message=second");
-        WorkflowRun b2 = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        WorkflowRun b2 = r.buildAndAssertSuccess(p);
         assertEquals(1, b2.getActions(BuildData.class).size());
         assertEquals(0, b2.getActions(GitTagAction.class).size());
         assertEquals(1, b2.getChangeSets().size());
@@ -282,6 +314,7 @@ public class GitStepTest {
 
     @Test
     public void commitToWorkspace() throws Exception {
+        assumeTrue("Test class max time " + MAX_SECONDS_FOR_THESE_TESTS + " exceeded", isTimeAvailable());
         sampleRepo.init();
         WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "commitToWorkspace");
         p.setDefinition(new CpsFlowDefinition(
@@ -292,7 +325,7 @@ public class GitStepTest {
             "  rungit 'commit --all --message=edits'\n" +
             "  rungit 'show master'\n" +
             "}", true));
-        WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        WorkflowRun b = r.buildAndAssertSuccess(p);
         r.waitForMessage("+edited by build", b);
     }
 

@@ -30,7 +30,6 @@ import com.cloudbees.plugins.credentials.domains.URIRequirementBuilder;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.RestrictedSince;
 import hudson.Util;
@@ -56,7 +55,6 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -294,11 +292,7 @@ public class GitSCMSource extends AbstractGitSCMSource {
     @DataBoundSetter
     public void setBrowser(GitRepositoryBrowser browser) {
         List<SCMSourceTrait> traits = new ArrayList<>(this.traits);
-        for (Iterator<SCMSourceTrait> iterator = traits.iterator(); iterator.hasNext(); ) {
-            if (iterator.next() instanceof GitBrowserSCMSourceTrait) {
-                iterator.remove();
-            }
-        }
+        traits.removeIf(scmSourceTrait -> scmSourceTrait instanceof GitBrowserSCMSourceTrait);
         if (browser != null) {
             traits.add(new GitBrowserSCMSourceTrait(browser));
         }
@@ -311,11 +305,7 @@ public class GitSCMSource extends AbstractGitSCMSource {
     public void setGitTool(String gitTool) {
         List<SCMSourceTrait> traits = new ArrayList<>(this.traits);
         gitTool = Util.fixEmptyAndTrim(gitTool);
-        for (Iterator<SCMSourceTrait> iterator = traits.iterator(); iterator.hasNext(); ) {
-            if (iterator.next() instanceof GitToolSCMSourceTrait) {
-                iterator.remove();
-            }
-        }
+        traits.removeIf(scmSourceTrait -> scmSourceTrait instanceof GitToolSCMSourceTrait);
         if (gitTool != null) {
             traits.add(new GitToolSCMSourceTrait(gitTool));
         }
@@ -328,11 +318,7 @@ public class GitSCMSource extends AbstractGitSCMSource {
     @Deprecated
     public void setExtensions(@CheckForNull List<GitSCMExtension> extensions) {
         List<SCMSourceTrait> traits = new ArrayList<>(this.traits);
-        for (Iterator<SCMSourceTrait> iterator = traits.iterator(); iterator.hasNext(); ) {
-            if (iterator.next() instanceof GitSCMExtensionTrait) {
-                iterator.remove();
-            }
-        }
+        traits.removeIf(scmSourceTrait -> scmSourceTrait instanceof GitSCMExtensionTrait);
         EXTENSIONS:
         for (GitSCMExtension extension : Util.fixNull(extensions)) {
             for (SCMSourceTraitDescriptor d : SCMSourceTrait.all()) {
@@ -414,7 +400,6 @@ public class GitSCMSource extends AbstractGitSCMSource {
 
     @NonNull
     @Override
-    @SuppressFBWarnings(value="EI_EXPOSE_REP", justification="Low risk")
     public List<SCMSourceTrait> getTraits() {
         return traits;
     }
@@ -536,7 +521,7 @@ public class GitSCMSource extends AbstractGitSCMSource {
         }
 
         public List<SCMSourceTrait> getTraitsDefaults() {
-            return Collections.<SCMSourceTrait>singletonList(new BranchDiscoveryTrait());
+            return Collections.singletonList(new BranchDiscoveryTrait());
         }
 
         @NonNull
@@ -627,7 +612,7 @@ public class GitSCMSource extends AbstractGitSCMSource {
                                                 return Collections.emptyMap();
                                             }
                                         }
-                                        return Collections.<SCMHead, SCMRevision>singletonMap(head,
+                                        return Collections.singletonMap(head,
                                                 sha1 != null ? new GitBranchSCMRevision(head, sha1) : null);
                                     }
                                 }
@@ -659,7 +644,7 @@ public class GitSCMSource extends AbstractGitSCMSource {
                                     continue;
                                 }
                                 if (GitStatus.looselyMatches(uri, remote)) {
-                                    LOGGER.info("Triggering the indexing of " + owner.getFullDisplayName()
+                                    LOGGER.fine("Triggering the indexing of " + owner.getFullDisplayName()
                                             + " as a result of event from " + origin);
                                     triggerIndexing(owner, source);
                                     result.add(new GitStatus.ResponseContributor() {
