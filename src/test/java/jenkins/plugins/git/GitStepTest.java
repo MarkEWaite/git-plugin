@@ -152,7 +152,7 @@ public class GitStepTest {
         WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "differentDefaultBranchName");
         p.setDefinition(new CpsFlowDefinition(
                 "node {\n" +
-                "  git 'https://github.com/MarkEWaite/peass-ci.git'\n" +
+                "  git 'https://github.com/jenkins-infra/oracle.git'\n" +
                 "}\n", true));
         // Confirm the bug exists
         WorkflowRun b = r.assertBuildStatus(Result.FAILURE, p.scheduleBuild2(0));
@@ -168,7 +168,7 @@ public class GitStepTest {
         WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "differentDefaultBranchNameWithBranchName");
         p.setDefinition(new CpsFlowDefinition(
                 "node {\n" +
-                "  git(url: 'https://github.com/MarkEWaite/peass-ci.git', branch: 'main')\n" +
+                "  git(url: 'https://github.com/jenkins-infra/oracle.git', branch: 'main')\n" +
                 "}\n", true));
         // Confirm the workaround allows the job to succeed
         WorkflowRun b = r.assertBuildStatusSuccess(p.scheduleBuild2(0));
