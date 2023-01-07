@@ -19,9 +19,9 @@ import java.io.File;
 import java.io.PrintWriter;
 import java.net.URISyntaxException;
 import java.util.*;
+import org.eclipse.jgit.transport.URIish;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.eclipse.jgit.transport.URIish;
 import org.kohsuke.stapler.HttpResponses;
 import org.mockito.Mockito;
 import static org.mockito.Mockito.mock;
@@ -32,11 +32,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
-import org.junit.experimental.theories.DataPoints;
-import org.junit.experimental.theories.FromDataPoints;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.runner.RunWith;
 import org.jvnet.hudson.test.WithoutJenkins;
 
 import javax.servlet.http.HttpServletRequest;
@@ -44,7 +39,6 @@ import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
-@RunWith(Theories.class)
 public class GitStatusTest extends AbstractGitProject {
 
     private GitStatus gitStatus;
@@ -130,12 +124,6 @@ public class GitStatusTest extends AbstractGitProject {
     @Test
     public void testGetUrlName() {
         assertEquals("git", this.gitStatus.getUrlName());
-    }
-
-    @WithoutJenkins
-    @Test
-    public void testToString() {
-        assertEquals("URL: ", this.gitStatus.toString());
     }
 
     @WithoutJenkins
@@ -334,39 +322,6 @@ public class GitStatusTest extends AbstractGitProject {
                 + (allowedParamKey1 ? " Parameters: paramKey1='paramValue1'" : "")
                 + (allowedParamKey1 ? " More parameters: paramKey1='paramValue1'" : "");
         assertEquals(expected, this.gitStatus.toString());
-    }
-
-    @DataPoints("branchSpecPrefixes")
-    public static final String[] BRANCH_SPEC_PREFIXES = new String[] {
-            "",
-            "refs/remotes/",
-            "refs/heads/",
-            "origin/",
-            "remotes/origin/"
-    };
-
-    @Theory
-    public void testDoNotifyCommitBranchWithSlash(@FromDataPoints("branchSpecPrefixes") String branchSpecPrefix) throws Exception {
-        SCMTrigger trigger = setupProjectWithTrigger("remote", branchSpecPrefix + "feature/awesome-feature", false);
-        this.gitStatus.doNotifyCommit(requestWithNoParameter, "remote", "feature/awesome-feature", null, notifyCommitApiToken);
-
-        Mockito.verify(trigger).run();
-    }
-
-    @Theory
-    public void testDoNotifyCommitBranchWithoutSlash(@FromDataPoints("branchSpecPrefixes") String branchSpecPrefix) throws Exception {
-        SCMTrigger trigger = setupProjectWithTrigger("remote", branchSpecPrefix + "awesome-feature", false);
-        this.gitStatus.doNotifyCommit(requestWithNoParameter, "remote", "awesome-feature", null, notifyCommitApiToken);
-
-        Mockito.verify(trigger).run();
-    }
-
-    @Theory
-    public void testDoNotifyCommitBranchByBranchRef(@FromDataPoints("branchSpecPrefixes") String branchSpecPrefix) throws Exception {
-        SCMTrigger trigger = setupProjectWithTrigger("remote", branchSpecPrefix + "awesome-feature", false);
-        this.gitStatus.doNotifyCommit(requestWithNoParameter, "remote", "refs/heads/awesome-feature", null, notifyCommitApiToken);
-
-        Mockito.verify(trigger).run();
     }
 
     @Test
@@ -574,7 +529,7 @@ public class GitStatusTest extends AbstractGitProject {
 
     @Test
     public void testDoNotifyCommitWithDefaultUnsafeParameterExtra() throws Exception {
-        doNotifyCommitWithDefaultParameter(false, "A,B,C");
+       doNotifyCommitWithDefaultParameter(false, "A,B,C");
     }
 
     private void doNotifyCommitWithDefaultParameter(final boolean allowed, String safeParameters) throws Exception {

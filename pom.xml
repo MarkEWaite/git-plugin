@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>4.47</version>
+    <version>4.53</version>
     <relativePath />
   </parent>
 
@@ -13,7 +13,7 @@
   <packaging>hpi</packaging>
   <name>Git plugin</name>
   <description>Integrates Jenkins with Git SCM</description>
-  <url>https://github.com/jenkinsci/git-plugin/blob/master/README.adoc</url>
+  <url>https://github.com/jenkinsci/git-plugin</url>
   <inceptionYear>2007</inceptionYear>
 
   <licenses>
@@ -58,25 +58,26 @@
   </scm>
 
   <properties>
-    <revision>4.12.2</revision>
+    <revision>5.0.1</revision>
     <changelist>-SNAPSHOT</changelist>
     <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
-    <jenkins.version>2.332.4</jenkins.version>
+    <jenkins.version>2.361.4</jenkins.version>
     <no-test-jar>false</no-test-jar>
+    <!-- Jenkins.MANAGE is still in Beta -->
     <useBeta>true</useBeta>
+    <!-- Do not run extra reporting for checkstyle or pmd -->
+    <!-- https://stackoverflow.com/questions/12038238/unable-to-locate-source-xref-to-link-to -->
     <linkXRef>false</linkXRef>
     <spotbugs.effort>Max</spotbugs.effort>
-    <spotbugs.failOnError>true</spotbugs.failOnError>
     <spotbugs.threshold>Medium</spotbugs.threshold>
-    <forkCount>0.8C</forkCount>
   </properties>
 
   <dependencyManagement>
     <dependencies>
       <dependency>
         <groupId>io.jenkins.tools.bom</groupId>
-        <artifactId>bom-2.332.x</artifactId>
-        <version>1607.va_c1576527071</version>
+        <artifactId>bom-2.361.x</artifactId>
+        <version>1763.v092b_8980a_f5e</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -117,6 +118,12 @@
       <artifactId>workflow-scm-step</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-cps</artifactId>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>matrix-project</artifactId>
       <optional>true</optional>
@@ -132,15 +139,8 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest</artifactId>
-      <version>2.2</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.13.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -156,7 +156,7 @@
     <dependency>
       <groupId>nl.jqno.equalsverifier</groupId>
       <artifactId>equalsverifier</artifactId>
-      <version>3.10.1</version>
+      <version>3.12.3</version>
       <scope>test</scope>
     </dependency>
     <!--Credential Binding Plugin-->
@@ -168,9 +168,20 @@
       <!-- we contribute AbstractBuildParameters for Git if it's available -->
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>parameterized-trigger</artifactId>
-      <version>2.39</version>
+      <version>2.43.1</version>
       <optional>true</optional>
     </dependency>
+    <dependency>
+      <!-- BOM automated tests fail without conditional-buildstep plugin -->
+      <!-- TODO: Remove this dependency when parameterized trigger plugin dependency fix is released -->
+      <!-- https://github.com/jenkinsci/bom/pull/1623#issuecomment-1339989438 -->
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>conditional-buildstep</artifactId>
+      <version>1.4.2</version>
+      <scope>test</scope>
+      <optional>true</optional>
+    </dependency>
+
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>token-macro</artifactId>
@@ -179,7 +190,7 @@
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>promoted-builds</artifactId>
-      <version>3.10.1</version>
+      <version>3.11</version>
       <optional>true</optional>
     </dependency>
     <dependency>
@@ -217,7 +228,6 @@
     <dependency>
       <groupId>io.jenkins.plugins</groupId>
       <artifactId>pipeline-groovy-lib</artifactId>
-      <version>612.v84da_9c54906d</version> <!-- TODO until in BOM -->
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -225,19 +235,6 @@
       <artifactId>git-tag-message</artifactId>
       <version>1.7.1</version>
       <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.github.spotbugs</groupId>
-      <artifactId>spotbugs-annotations</artifactId>
-      <version>4.7.2</version>
-      <optional>true</optional>
-      <exclusions>
-        <!-- prevent inclusion in hpi as a transient dependency -->
-        <exclusion>
-          <groupId>com.google.code.findbugs</groupId>
-          <artifactId>jsr305</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <!-- JCasC compatibility -->
     <dependency>
@@ -276,7 +273,7 @@
         <plugin>
           <groupId>com.diffplug.spotless</groupId>
           <artifactId>spotless-maven-plugin</artifactId>
-          <version>2.26.0</version>
+          <version>2.29.0</version>
           <configuration>
             <!-- define a language-specific format -->
             <java>
@@ -315,18 +312,21 @@
           <failOnViolation>true</failOnViolation>
         </configuration>
       </plugin>
-      <plugin>
-        <groupId>com.github.spotbugs</groupId>
-        <artifactId>spotbugs-maven-plugin</artifactId>
-        <dependencies>
-          <dependency>
-            <groupId>com.github.spotbugs</groupId>
-            <artifactId>spotbugs</artifactId>
-            <version>4.7.2</version>
-          </dependency>
-        </dependencies>
-      </plugin>
     </plugins>
   </build>
 
+  <profiles>
+    <profile>
+      <id>continuous-integration</id>
+      <activation>
+        <property>
+          <name>env.CI</name>
+        </property>
+      </activation>
+      <properties>
+        <!-- Fork a JVM per core for automated tests on continuous integration servers -->
+        <forkCount>1C</forkCount>
+      </properties>
+    </profile>
+  </profiles>
 </project>
