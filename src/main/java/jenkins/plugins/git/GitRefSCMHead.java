@@ -55,6 +55,29 @@ public class GitRefSCMHead extends SCMHead implements GitSCMHeadMixin {
         return ref;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        GitRefSCMHead head = (GitRefSCMHead) o;
+        return super.equals(head);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int hashCode() {
+        return ref.hashCode() + super.hashCode();
+    }
+
     @Override
     public String toString() {
         return "GitRefSCMHead{" + "name='" + getName() + "'" + ", ref='" + ref + "'}";

@@ -48,6 +48,29 @@ public class GitBranchSCMHead extends SCMHead implements GitSCMHeadMixin {
         return Constants.R_HEADS + getName();
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        GitBranchSCMHead head = (GitBranchSCMHead) o;
+        return super.equals(head);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
+
     @Override
     public String toString() {
         return "GitBranchSCMHead{" + "name='" + getName() + "'" + ", ref='" + getRef() + "'}";

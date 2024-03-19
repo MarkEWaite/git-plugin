@@ -59,4 +59,26 @@ public class GitTagSCMHead extends SCMHead implements TagSCMHead {
         return timestamp;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        GitTagSCMHead head = (GitTagSCMHead) o;
+        return head.timestamp == timestamp && super.equals(head);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int hashCode() {
+        return Math.toIntExact(timestamp) + super.hashCode();
+    }
 }

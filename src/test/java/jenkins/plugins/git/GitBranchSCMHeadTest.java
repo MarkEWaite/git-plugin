@@ -2,6 +2,7 @@ package jenkins.plugins.git;
 
 import hudson.FilePath;
 import hudson.model.Queue;
+import nl.jqno.equalsverifier.EqualsVerifier;
 import org.apache.commons.io.FileUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
@@ -10,6 +11,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.WithoutJenkins;
 import org.jvnet.hudson.test.recipes.LocalData;
 
 import java.io.File;
@@ -81,6 +83,12 @@ public class GitBranchSCMHeadTest {
         assertEquals(1, dev.getBuilds().size());
         v4 = job.getItem("v4");
         assertEquals(0, v4.getBuilds().size());
+    }
+
+    @Test
+    @WithoutJenkins
+    public void equalsContract() {
+        EqualsVerifier.forClass(GitBranchSCMHead.class).usingGetClass().verify();
     }
 
     /** inline ${@link hudson.Functions#isWindows()} to prevent a transient remote classloader issue */
