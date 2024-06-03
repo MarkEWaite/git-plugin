@@ -21,11 +21,12 @@ Compile the git plugin without running tests using the command:
 * `mvn clean -DskipTests verify`
 
 Code coverage reporting is available as a maven target.
-Please try to improve code coverage with tests when you submit.
+Please improve code coverage with tests when you submit a pull request.
 
 * `mvn -P enable-jacoco clean install jacoco:report` to report code coverage
 
-Please don't introduce new spotbugs output.
+New spotbugs output will fail the build.
+Do not introduce new spotbugs warnings.
 
 * `mvn spotbugs:check` to analyze project using https://spotbugs.github.io/[Spotbugs].
 * `mvn spotbugs:gui` to review Spotbugs report using GUI
@@ -53,10 +54,8 @@ By executing the tests in random order, it increases the chances that at least o
 
 Maintainers triage pull requests by reviewing them and by assigning labels.
 Release drafter uses the labels to automate link:https://github.com/jenkinsci/git-plugin/releases[release notes].
-link:Priorities.adoc#git-plugin-development-priorities[Prioritization] uses the labels to group relevant pull requests.
 
 Others are encouraged to review pull requests, test pull request builds, and report their results in the pull request.
-Refer to the link:Priorities.adoc#priorities[maintainer's priority list] for topics the plugin maintainers are considering.
 
 === Testing a Pull Request Build
 

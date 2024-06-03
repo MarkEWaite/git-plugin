@@ -98,7 +98,6 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static hudson.init.InitMilestone.JOB_LOADED;
 import static hudson.init.InitMilestone.PLUGINS_STARTED;
 import hudson.plugins.git.browser.BitbucketWeb;
@@ -111,10 +110,6 @@ import hudson.util.LogTaskListener;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static org.apache.commons.collections.CollectionUtils.isEmpty;
-import static org.apache.commons.lang.StringUtils.isBlank;
-
 
 /**
  * Git SCM.
@@ -217,7 +212,12 @@ public class GitSCM extends GitSCMBackwardCompatibility {
             List<GitSCMExtension> extensions) {
 
         // moved from createBranches
-        this.branches = isEmpty(branches) ? newArrayList(new BranchSpec("*/master")) : branches;
+        if (branches == null || branches.isEmpty()) {
+            this.branches = new ArrayList<>();
+            this.branches.add(new BranchSpec("*/master"));
+        } else {
+            this.branches = branches;
+        }
 
         this.userRemoteConfigs = userRemoteConfigs;
         updateFromUserData();
@@ -620,7 +620,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
      * If the configuration is such that we are tracking just one branch of one repository
      * return that branch specifier (in the form of something like "origin/master" or a SHA1-hash
      *
-     * Otherwise return [@code null}.
+     * Otherwise return {@code null}.
      */
     @CheckForNull
     private String getSingleBranch(EnvVars env) {
@@ -696,7 +696,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
     public static final Pattern GIT_REF = Pattern.compile("^(refs/[^/]+)/(.+)");
 
     private PollingResult compareRemoteRevisionWithImpl(Job<?, ?> project, Launcher launcher, FilePath workspace, final @NonNull TaskListener listener) throws IOException, InterruptedException {
-        // Poll for changes. Are there any unbuilt revisions that Hudson ought to build ?
+        // Poll for changes. Are there any unbuilt revisions that Jenkins ought to build ?
 
         listener.getLogger().println("Using strategy: " + getBuildChooser().getDisplayName());
 
@@ -956,10 +956,6 @@ public class GitSCM extends GitSCMBackwardCompatibility {
                     URIRequirementBuilder.fromUri(url).build());
             return c != null && GitClient.CREDENTIALS_MATCHER.matches(c) ? c : null;
         }
-    }
-
-    private static CredentialsMatcher gitScanCredentialsMatcher() {
-        return CredentialsMatchers.anyOf(CredentialsMatchers.instanceOf(StandardUsernamePasswordCredentials.class));
     }
 
     @NonNull
@@ -1426,7 +1422,9 @@ public class GitSCM extends GitSCMBackwardCompatibility {
         try {
             RevCommit commit = git.withRepository(new RevCommitRepositoryCallback(revToBuild));
             listener.getLogger().println("Commit message: \"" + commit.getShortMessage() + "\"");
-        } catch (InterruptedException | MissingObjectException e) {
+        } catch (MissingObjectException e) {
+            listener.getLogger().println("Commit '" + e.getObjectId() + "' not found - no commit message to print");
+        } catch (InterruptedException e) {
             e.printStackTrace(listener.error("Unable to retrieve commit message"));
         }
     }
@@ -1643,6 +1641,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
     @Symbol({"scmGit", "gitSCM"}) // Cannot use "git" because there is already a `git` pipeline step
     public static final class DescriptorImpl extends SCMDescriptor<GitSCM> {
 
+        @SuppressFBWarnings(value="UUF_UNUSED_FIELD", justification="Do not risk compatibility")
         private String gitExe;
         private String globalConfigName;
         private String globalConfigEmail;
@@ -1736,7 +1735,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
          */
         @Deprecated
         public String getGitExe() {
-            return gitExe;
+            return null;
         }
 
         /**
@@ -1807,7 +1806,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
          * @return git executable
          */
         public String getOldGitExe() {
-            return gitExe;
+            return null;
         }
 
         public static List<RemoteConfig> createRepositoryConfigurations(String[] urls,
@@ -1830,7 +1829,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
                 String name = names[i];
                 name = name.replace(' ', '_');
 
-                if (isBlank(refs[i])) {
+                if (refs[i] == null || refs[i].isBlank()) {
                     refs[i] = "+refs/heads/*:refs/remotes/" + name + "/*";
                 }
 
@@ -1982,6 +1981,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
      * @param clone true if returned build data should be copied rather than referenced
      * @return build data for build run
      */
+    @Deprecated
     public BuildData getBuildData(Run build, boolean clone) {
         return clone ? copyBuildData(build) : getBuildData(build);
     }

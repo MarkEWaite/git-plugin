@@ -21,7 +21,6 @@ import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Publisher;
 import hudson.tasks.Recorder;
 import hudson.util.FormValidation;
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jgit.transport.RemoteConfig;
 import org.eclipse.jgit.transport.URIish;
 import org.jenkinsci.plugins.gitclient.GitClient;
@@ -147,6 +146,16 @@ public class GitPublisher extends Recorder implements Serializable {
         input = input.replaceAll("\\$BUILDDURATION", buildDuration);
         return input;
     }
+
+    protected GitClient getGitClient(
+            GitSCM gitSCM,
+            BuildListener listener,
+            EnvVars environment,
+            AbstractBuild<?, ?> build,
+            UnsupportedCommand cmd)
+            throws IOException, InterruptedException {
+        return gitSCM.createClient(listener, environment, build, build.getWorkspace(), cmd);
+    }
     
     @Override
     public boolean perform(AbstractBuild<?, ?> build,
@@ -181,7 +190,7 @@ public class GitPublisher extends Recorder implements Serializable {
 
             UnsupportedCommand cmd = new UnsupportedCommand();
             cmd.gitPublisher(true);
-            final GitClient git  = gitSCM.createClient(listener, environment, build, build.getWorkspace(), cmd);
+            final GitClient git  = getGitClient(gitSCM, listener, environment, build, cmd);
 
             URIish remoteURI;
 
@@ -456,9 +465,11 @@ public class GitPublisher extends Recorder implements Serializable {
         }
 
         private FormValidation checkFieldNotEmpty(String value, String field) {
-            value = StringUtils.strip(value);
+            if (value != null) {
+                value = value.strip();
+            }
 
-            if (value == null || value.equals("")) {
+            if (value == null || value.isEmpty()) {
                 return FormValidation.error(Messages.GitPublisher_Check_Required(field));
             }
             return FormValidation.ok();
