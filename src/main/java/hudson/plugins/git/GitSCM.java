@@ -623,7 +623,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
      * If the configuration is such that we are tracking just one branch of one repository
      * return that branch specifier (in the form of something like "origin/master" or a SHA1-hash
      *
-     * Otherwise return [@code null}.
+     * Otherwise return {@code null}.
      */
     @CheckForNull
     private String getSingleBranch(EnvVars env) {
@@ -699,7 +699,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
     public static final Pattern GIT_REF = Pattern.compile("^(refs/[^/]+)/(.+)");
 
     private PollingResult compareRemoteRevisionWithImpl(Job<?, ?> project, Launcher launcher, FilePath workspace, final @NonNull TaskListener listener) throws IOException, InterruptedException {
-        // Poll for changes. Are there any unbuilt revisions that Hudson ought to build ?
+        // Poll for changes. Are there any unbuilt revisions that Jenkins ought to build ?
 
         listener.getLogger().println("Using strategy: " + getBuildChooser().getDisplayName());
 
@@ -959,10 +959,6 @@ public class GitSCM extends GitSCMBackwardCompatibility {
                     URIRequirementBuilder.fromUri(url).build());
             return c != null && GitClient.CREDENTIALS_MATCHER.matches(c) ? c : null;
         }
-    }
-
-    private static CredentialsMatcher gitScanCredentialsMatcher() {
-        return CredentialsMatchers.anyOf(CredentialsMatchers.instanceOf(StandardUsernamePasswordCredentials.class));
     }
 
     @NonNull
@@ -1665,6 +1661,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
     @Symbol({"scmGit", "gitSCM"}) // Cannot use "git" because there is already a `git` pipeline step
     public static final class DescriptorImpl extends SCMDescriptor<GitSCM> {
 
+        @SuppressFBWarnings(value="UUF_UNUSED_FIELD", justification="Do not risk compatibility")
         private String gitExe;
         private String globalConfigName;
         private String globalConfigEmail;
@@ -1758,7 +1755,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
          */
         @Deprecated
         public String getGitExe() {
-            return gitExe;
+            return null;
         }
 
         /**
@@ -1829,7 +1826,7 @@ public class GitSCM extends GitSCMBackwardCompatibility {
          * @return git executable
          */
         public String getOldGitExe() {
-            return gitExe;
+            return null;
         }
 
         public static List<RemoteConfig> createRepositoryConfigurations(String[] urls,

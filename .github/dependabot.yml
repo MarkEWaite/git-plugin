@@ -1,12 +1,23 @@
+# Per https://docs.github.com/en/github/administering-a-repository/configuration-options-for-dependency-updates
 version: 2
 updates:
+
+  # Maintain dependencies for maven
   - package-ecosystem: "maven"
-    directory: "/" # Location of package manifests
+    directory: "/"
+    ignore:
+      # Fails plugin bill of materials tests
+      # https://github.com/jenkinsci/bom/issues/3171
+      - dependency-name: "org.jenkins-ci.plugins:promoted-builds"
     schedule:
       interval: "weekly"
+    labels:
+      - "dependencies"
+
+  # Maintain dependencies for GitHub actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
     labels:
-      - skip-changelog
+      - "skip-changelog"

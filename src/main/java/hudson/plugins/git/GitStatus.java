@@ -12,6 +12,7 @@ import hudson.scm.SCM;
 import hudson.security.ACL;
 import hudson.security.ACLContext;
 import hudson.triggers.SCMTrigger;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URISyntaxException;
 import java.util.*;
@@ -23,6 +24,7 @@ import javax.servlet.http.HttpServletRequest;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 import jenkins.model.Jenkins;
+import jenkins.model.ParameterizedJobMixIn;
 import jenkins.scm.api.SCMEvent;
 import jenkins.triggers.SCMTriggerItem;
 import jenkins.util.SystemProperties;
@@ -33,7 +35,7 @@ import org.eclipse.jgit.transport.URIish;
 import org.kohsuke.stapler.*;
 
 /**
- * Information screen for the use of Git in Hudson.
+ * Root action that requests the plugin to poll for changes in remote repositories.
  */
 @Extension
 public class GitStatus implements UnprotectedRootAction {
@@ -176,7 +178,9 @@ public class GitStatus implements UnprotectedRootAction {
             contributors.addAll(listener.onNotifyCommit(origin, uri, sha1, buildParameters, branchesArray));
         }
 
-        return (StaplerRequest req, StaplerResponse rsp, Object node) -> {
+        return new HttpResponse() {
+          @Override
+          public void generateResponse(StaplerRequest req, StaplerResponse rsp, Object node) throws IOException {
             rsp.setStatus(SC_OK);
             rsp.setContentType("text/plain");
             for (int i = 0; i < contributors.size(); i++) {
@@ -191,6 +195,7 @@ public class GitStatus implements UnprotectedRootAction {
             for (ResponseContributor c : contributors) {
                 c.writeBody(req, rsp, w);
             }
+          }
         };
     }
 
@@ -425,7 +430,7 @@ public class GitStatus implements UnprotectedRootAction {
                             }
                             if (!branchFound) continue;
                             urlFound = true;
-                            if (!(project instanceof AbstractProject && ((AbstractProject) project).isDisabled())) {
+                            if (!(project instanceof ParameterizedJobMixIn.ParameterizedJob && ((ParameterizedJobMixIn.ParameterizedJob) project).isDisabled())) {
                                 //JENKINS-30178 Add default parameters defined in the job
                                 if (project instanceof Job) {
                                     Set<String> buildParametersNames = new HashSet<>();

@@ -24,8 +24,8 @@
 
 package jenkins.plugins.git;
 
-import com.gargoylesoftware.htmlunit.WebResponse;
-import com.gargoylesoftware.htmlunit.util.NameValuePair;
+import org.htmlunit.WebResponse;
+import org.htmlunit.util.NameValuePair;
 import hudson.Launcher;
 import hudson.model.TaskListener;
 import hudson.plugins.git.GitSCM;
@@ -50,12 +50,14 @@ public final class GitSampleRepoRule extends AbstractSampleDVCSRepoRule {
 
     private static final Logger LOGGER = Logger.getLogger(GitSampleRepoRule.class.getName());
 
-    protected void before() throws Throwable {
+    @Override
+    public void before() throws Throwable {
         super.before();
         GitSCM.ALLOW_LOCAL_CHECKOUT = true;
     }
 
-    protected void after() {
+    @Override
+    public void after() {
         super.after();
         GitSCM.ALLOW_LOCAL_CHECKOUT = false;
     }
@@ -88,6 +90,7 @@ public final class GitSampleRepoRule extends AbstractSampleDVCSRepoRule {
         git("config", "user.email", "gits@mplereporule");
         git("config", "init.defaultbranch", "master");
         git("config", "commit.gpgsign", "false");
+        git("config", "tag.gpgSign", "false");
         git("commit", "--message=init");
     }
 
