@@ -7,6 +7,7 @@ import hudson.ExtensionPoint;
 import hudson.model.Item;
 import hudson.model.Node;
 import hudson.model.TaskListener;
+import hudson.plugins.git.GitException;
 import hudson.plugins.git.GitTool;
 import hudson.plugins.git.util.GitUtils;
 import jenkins.model.Jenkins;
@@ -102,7 +103,13 @@ public class GitToolChooser {
             if (cacheDir != null) {
                 Git git = Git.with(TaskListener.NULL, new EnvVars(EnvVars.masterEnvVars)).in(cacheDir).using("git");
                 GitClient client = git.getClient();
-                if (client.hasGitRepo(false)) {
+                boolean hasGitRepo;
+                try {
+                    hasGitRepo = client.hasGitRepo(false);
+                } catch (GitException x) {
+                    throw new IOException(x);
+                }
+                if (hasGitRepo) {
                     long clientRepoSize = FileUtils.sizeOfDirectory(cacheDir) / 1024; // Conversion from Bytes to Kilo Bytes
                     if (clientRepoSize > sizeOfRepo) {
                         if (sizeOfRepo > 0) {
@@ -269,17 +276,15 @@ public class GitToolChooser {
     /** Cache the estimated repository size for variants of repository URL */
     private void assignSizeToInternalCache(String repoURL, long repoSize) {
         repoURL = convertToCanonicalURL(repoURL);
-        if (repositorySizeCache.containsKey(repoURL)) {
-            long oldSize = repositorySizeCache.get(repoURL);
-            if (oldSize < repoSize) {
-                LOGGER.log(Level.FINE, "Replacing old repo size {0} with new size {1} for repo {2}", new Object[]{oldSize, repoSize, repoURL});
-                repositorySizeCache.put(repoURL, repoSize);
-            } else if (oldSize > repoSize) {
-                LOGGER.log(Level.FINE, "Ignoring new size {1} in favor of old size {0} for repo {2}", new Object[]{oldSize, repoSize, repoURL});
-            }
-        } else {
+        Long oldSize = repositorySizeCache.put(repoURL, repoSize);
+        if (oldSize == null) {
             LOGGER.log(Level.FINE, "Caching repo size {0} for repo {1}", new Object[]{repoSize, repoURL});
-            repositorySizeCache.put(repoURL, repoSize);
+        } else if (oldSize < repoSize) {
+            LOGGER.log(Level.FINE, "Replaced old repo size {0} with new size {1} for repo {2}", new Object[]{oldSize, repoSize, repoURL});
+        } else if (oldSize > repoSize) {
+            /* Put back the larger old repo size and log a warning. This is not harmful but should be quite rare */
+            LOGGER.log(Level.WARNING, "Ignoring new repo size {1} in favor of old size {0} for repo {2}", new Object[]{oldSize, repoSize, repoURL});
+            repositorySizeCache.put(repoURL, oldSize);
         }
     }
 

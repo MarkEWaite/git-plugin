@@ -34,6 +34,7 @@ import hudson.plugins.git.GitException;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -59,11 +60,11 @@ public class CliGitCommand {
     private String[] output;
     private ArgumentListBuilder args;
 
-    public CliGitCommand(GitClient client, String... arguments) {
+    public CliGitCommand(GitClient client, String... arguments) throws GitException {
         this(client, GitUtilsTest.getConfigNoSystemEnvsVars(), arguments);
     }
 
-    public CliGitCommand(GitClient client, EnvVars envVars, String... arguments) {
+    public CliGitCommand(GitClient client, EnvVars envVars, String... arguments) throws GitException {
         args = new ArgumentListBuilder("git");
         args.add(arguments);
         listener = StreamTaskListener.NULL;
@@ -79,10 +80,14 @@ public class CliGitCommand {
         }
     }
 
-    public String[] run(String... arguments) throws IOException, InterruptedException {
+    public String[] run(boolean checkForErrors, String... arguments) throws IOException, InterruptedException {
         args = new ArgumentListBuilder("git");
         args.add(arguments);
-        return run(true);
+        return run(checkForErrors);
+    }
+
+    public String[] run(String... arguments) throws IOException, InterruptedException {
+        return run(true, arguments);
     }
 
     public String[] run() throws IOException, InterruptedException {
@@ -94,9 +99,9 @@ public class CliGitCommand {
         ByteArrayOutputStream bytesErr = new ByteArrayOutputStream();
         Launcher.ProcStarter p = launcher.launch().cmds(args).envs(env).stdout(bytesOut).stderr(bytesErr).pwd(dir);
         int status = p.start().joinWithTimeout(1, TimeUnit.MINUTES, listener);
-        String result = bytesOut.toString("UTF-8");
+        String result = bytesOut.toString(StandardCharsets.UTF_8);
         if (bytesErr.size() > 0) {
-            result = result + "\nstderr not empty:\n" + bytesErr.toString("UTF-8");
+            result = result + "\nstderr not empty:\n" + bytesErr.toString(StandardCharsets.UTF_8);
         }
         output = result.split("[\\n\\r]");
         if (assertProcessStatus) {
@@ -117,14 +122,9 @@ public class CliGitCommand {
         }
     }
 
-    private String[] runWithoutAssert(String... arguments) throws IOException, InterruptedException {
-        args = new ArgumentListBuilder("git");
-        args.add(arguments);
-        return run(false);
-    }
-
     private void setConfigIfEmpty(String configName, String value) throws Exception {
-        String[] cmdOutput = runWithoutAssert("config", "--global", configName);
+        boolean checkForErrors = false;
+        String[] cmdOutput = run(checkForErrors, "config", "--global", configName);
         if (cmdOutput == null || cmdOutput[0].isEmpty() || cmdOutput[0].equals("[]")) {
             /* Set config value globally */
             cmdOutput = run("config", "--global", configName, value);
