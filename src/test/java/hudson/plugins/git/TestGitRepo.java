@@ -166,6 +166,9 @@ public class TestGitRepo {
                 defaultBranchName = result;
             }
         }
+        if (defaultBranchName.isEmpty()) {
+            defaultBranchName = "master"; // Future command line git version will likely change this
+        }
         return defaultBranchName;
     }
 

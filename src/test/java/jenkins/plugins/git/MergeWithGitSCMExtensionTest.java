@@ -23,12 +23,14 @@ public class MergeWithGitSCMExtensionTest extends GitSCMExtensionTest {
     private String baseHash;
     private String DEFAULT_BRANCH_FILE = "commitFileBase";
 
+    @Override
     public void before() throws Exception {
         repo = new TestGitRepo("repo", tmp.newFolder(), listener);
         // make an initial commit to default branch and get hash
         this.baseHash = repo.commit(DEFAULT_BRANCH_FILE, repo.johnDoe, "Initial Commit");
         // set the base name as HEAD
         this.baseName = repo.getDefaultBranchName();
+        assertNotEquals("", this.baseName);
         project = setupBasicProject(repo);
         // create integration branch
         repo.git.branch("integration");
