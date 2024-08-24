@@ -7,7 +7,6 @@ import hudson.plugins.git.GitSCM;
 import hudson.plugins.git.util.BuildData;
 import hudson.plugins.git.util.GitUtilsTest;
 import jenkins.model.ParameterizedJobMixIn;
-import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.util.SystemReader;
 import org.jenkinsci.plugins.gitclient.Git;
 import org.jenkinsci.plugins.gitclient.GitClient;
@@ -18,13 +17,12 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.jvnet.hudson.test.JenkinsRule;
 
-import java.io.IOException;
 
 import static org.junit.Assert.assertNotNull;
 
 public abstract class AbstractGitTagMessageExtensionTest<J extends Job<J, R> & ParameterizedJobMixIn.ParameterizedJob<J, R>, R extends Run<J, R> & Queue.Executable> {
 
-    @Rule public final JenkinsRule jenkins = new JenkinsRule();
+    @Rule public final JenkinsRule r = new JenkinsRule();
 
     @Rule public final TemporaryFolder repoDir = new TemporaryFolder();
 
@@ -47,10 +45,10 @@ public abstract class AbstractGitTagMessageExtensionTest<J extends Job<J, R> & P
     protected abstract void assertBuildEnvironment(R run, String expectedName, String expectedMessage) throws Exception;
 
     @Before
-    public void setUp() throws IOException, InterruptedException, ConfigInvalidException {
+    public void setUp() throws Exception {
         SystemReader.getInstance().getUserConfig().clear();
         // Set up a temporary git repository for each test case
-        repo = Git.with(jenkins.createTaskListener(), GitUtilsTest.getConfigNoSystemEnvsVars()).in(repoDir.getRoot()).getClient();
+        repo = Git.with(r.createTaskListener(), GitUtilsTest.getConfigNoSystemEnvsVars()).in(repoDir.getRoot()).getClient();
         repo.init();
     }
 
@@ -176,7 +174,7 @@ public abstract class AbstractGitTagMessageExtensionTest<J extends Job<J, R> & P
      * @return The build that was executed.
      */
     private R buildJobAndAssertSuccess(J job) throws Exception {
-        R build = jenkins.buildAndAssertSuccess(job);
+        R build = r.buildAndAssertSuccess(job);
         assertNotNull(build.getAction(BuildData.class));
         return build;
     }

@@ -24,7 +24,7 @@ import static org.mockito.Mockito.times;
 public class GitChangeSetTest {
 
     @Rule
-    public JenkinsRule jenkins = new JenkinsRule();
+    public JenkinsRule r = new JenkinsRule();
 
     private final Random random = new Random();
 
@@ -183,7 +183,7 @@ public class GitChangeSetTest {
                 times(1)
             );
             user.verify(
-                () -> User.getUnknown(),
+                User::getUnknown,
                 times(2)
             );
         }

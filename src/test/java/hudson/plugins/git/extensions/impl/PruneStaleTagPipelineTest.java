@@ -25,12 +25,16 @@
 package hudson.plugins.git.extensions.impl;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import hudson.plugins.git.GitSCM;
+import hudson.plugins.git.util.GitUtilsTest;
 import jenkins.plugins.git.CliGitCommand;
 import org.apache.commons.io.FileUtils;
+import org.eclipse.jgit.errors.ConfigInvalidException;
+import org.eclipse.jgit.util.SystemReader;
 import org.jenkinsci.plugins.gitclient.Git;
 import org.jenkinsci.plugins.gitclient.GitClient;
 import org.jenkinsci.plugins.gitclient.TestCliGitAPIImpl;
@@ -47,7 +51,6 @@ import org.junit.rules.TemporaryFolder;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 
-import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.Functions;
 import hudson.model.Result;
@@ -91,7 +94,8 @@ public class PruneStaleTagPipelineTest {
     }
 
     @Before
-    public void allowNonRemoteCheckout() {
+    public void allowNonRemoteCheckout() throws ConfigInvalidException, IOException {
+        SystemReader.getInstance().getUserConfig().clear();
         GitSCM.ALLOW_LOCAL_CHECKOUT = true;
     }
 
@@ -146,17 +150,16 @@ public class PruneStaleTagPipelineTest {
 
     private GitClient newGitClient(File localRepo) {
         String gitExe = Functions.isWindows() ? "git.exe" : "git";
-        GitClient localClient = new TestCliGitAPIImpl(gitExe, localRepo, listener, new EnvVars());
-        return localClient;
+        return new TestCliGitAPIImpl(gitExe, localRepo, listener, GitUtilsTest.getConfigNoSystemEnvsVars());
     }
 
     private GitClient initRepository(File workspace) throws Exception {
         GitClient remoteClient = newGitClient(workspace);
         remoteClient.init();
-
         FileUtils.touch(new File(workspace, "test"));
+        remoteClient.config(GitClient.ConfigLevel.LOCAL, "commit.gpgsign", "false");
+        remoteClient.config(GitClient.ConfigLevel.LOCAL, "tag.gpgSign", "false");
         remoteClient.add("test");
-
         remoteClient.commit("initial commit");
         return remoteClient;
     }

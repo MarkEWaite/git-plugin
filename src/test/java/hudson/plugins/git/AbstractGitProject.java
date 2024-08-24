@@ -72,7 +72,7 @@ import org.jvnet.hudson.test.JenkinsRule;
 public class AbstractGitProject extends AbstractGitRepository {
 
     @Rule
-    public JenkinsRule jenkins = new JenkinsRule();
+    public JenkinsRule r = new JenkinsRule();
 
     @Rule
     public FlagRule<String> notifyCommitAccessControl =
@@ -101,7 +101,7 @@ public class AbstractGitProject extends AbstractGitRepository {
     }
 
     protected FreeStyleProject setupProject(List<BranchSpec> branches, boolean authorOrCommitter) throws Exception {
-        FreeStyleProject project = jenkins.createFreeStyleProject();
+        FreeStyleProject project = r.createFreeStyleProject();
         GitSCM scm = new GitSCM(remoteConfigs(), branches,
                 null, null,
                 Collections.singletonList(new DisableRemotePoll()));
@@ -176,7 +176,7 @@ public class AbstractGitProject extends AbstractGitRepository {
             String relativeTargetDir, String excludedRegions,
             String excludedUsers, String localBranch, boolean fastRemotePoll,
             String includedRegions, List<SparseCheckoutPath> sparseCheckoutPaths) throws Exception {
-        FreeStyleProject project = jenkins.createFreeStyleProject();
+        FreeStyleProject project = r.createFreeStyleProject();
         GitSCM scm = new GitSCM(
                 remoteConfigs(),
                 branches,
@@ -213,7 +213,7 @@ public class AbstractGitProject extends AbstractGitRepository {
      */
     protected FreeStyleProject setupProject(List<UserRemoteConfig> repos, List<BranchSpec> branchSpecs,
             String scmTriggerSpec, boolean disableRemotePoll, EnforceGitClient enforceGitClient) throws Exception {
-        FreeStyleProject project = jenkins.createFreeStyleProject();
+        FreeStyleProject project = r.createFreeStyleProject();
         GitSCM scm = new GitSCM(
                 repos,
                 branchSpecs,
@@ -239,7 +239,7 @@ public class AbstractGitProject extends AbstractGitRepository {
     protected FreeStyleBuild build(final FreeStyleProject project, final Result expectedResult, final String... expectedNewlyCommittedFiles) throws Exception {
         final FreeStyleBuild build = project.scheduleBuild2(0).get();
         if (expectedResult != null) {
-            jenkins.assertBuildStatus(expectedResult, build);
+            r.assertBuildStatus(expectedResult, build);
         }
         for (final String expectedNewlyCommittedFile : expectedNewlyCommittedFiles) {
             assertTrue(expectedNewlyCommittedFile + " file not found in workspace", build.getWorkspace().child(expectedNewlyCommittedFile).exists());
@@ -253,7 +253,7 @@ public class AbstractGitProject extends AbstractGitRepository {
             assertTrue(build.getWorkspace().child(parentDir).child(expectedNewlyCommittedFile).exists());
         }
         if (expectedResult != null) {
-            jenkins.assertBuildStatus(expectedResult, build);
+            r.assertBuildStatus(expectedResult, build);
         }
         return build;
     }
@@ -264,7 +264,7 @@ public class AbstractGitProject extends AbstractGitRepository {
             assertTrue(expectedNewlyCommittedFile + " file not found in workspace", build.getWorkspace().child(expectedNewlyCommittedFile).exists());
         }
         if (expectedResult != null) {
-            jenkins.assertBuildStatus(expectedResult, build);
+            r.assertBuildStatus(expectedResult, build);
         }
         return build;
     }

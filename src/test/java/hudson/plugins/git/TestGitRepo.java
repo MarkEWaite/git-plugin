@@ -36,7 +36,7 @@ public class TestGitRepo {
 	public final PersonIdent janeDoe = new PersonIdent("Jane Doe", "jane@doe.com");
         public static String defaultBranchName = "";
 
-    public TestGitRepo(String name, File tmpDir, TaskListener listener) throws IOException, InterruptedException {
+    public TestGitRepo(String name, File tmpDir, TaskListener listener) throws Exception {
 		this.name = name;
 		this.listener = listener;
 		
@@ -57,6 +57,8 @@ public class TestGitRepo {
 
         // finally: initialize the repo
 		git.init();
+        git.config(GitClient.ConfigLevel.LOCAL, "commit.gpgsign", "false");
+        git.config(GitClient.ConfigLevel.LOCAL, "tag.gpgSign", "false");
 	}
 
     /**

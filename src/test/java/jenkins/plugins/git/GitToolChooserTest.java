@@ -53,7 +53,7 @@ import static org.junit.Assume.assumeTrue;
 public class GitToolChooserTest {
 
     @Rule
-    public JenkinsRule jenkins = new JenkinsRule();
+    public JenkinsRule r = new JenkinsRule();
 
     @Rule
     public GitSampleRepoRule sampleRepo = new GitSampleRepoRule();
@@ -118,7 +118,7 @@ public class GitToolChooserTest {
 
         GitTool tool = new GitTool("my-git", isWindows() ? "git.exe" : "git", Collections.emptyList());
         GitTool JTool = new JGitTool(Collections.emptyList());
-        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool, JTool);
+        r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool, JTool);
 
         GitToolChooser r = new GitToolChooser(remote, context, credentialsId, JTool, null, TaskListener.NULL,true);
 
@@ -143,13 +143,13 @@ public class GitToolChooserTest {
         Item context = Mockito.mock(Item.class);
         String credentialsId = null;
 
-        TestToolInstaller inst = new TestToolInstaller(jenkins.jenkins.getSelfLabel().getName(), "echo Hello", "updated/git");
+        TestToolInstaller inst = new TestToolInstaller(r.jenkins.getSelfLabel().getName(), "echo Hello", "updated/git");
         GitTool t = new GitTool("myGit", "default/git", Collections.singletonList(
                 new InstallSourceProperty(Collections.singletonList(inst))));
 
         GitTool tool = new GitTool("my-git", "git", Collections.emptyList());
         GitTool JTool = new JGitTool(Collections.emptyList());
-        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool, JTool, t);
+        r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool, JTool, t);
 
         GitToolChooser r = new GitToolChooser(remote, context, credentialsId, JTool, null, TaskListener.NULL,true);
 
@@ -175,11 +175,11 @@ public class GitToolChooserTest {
         String credentialsId = null;
 
         LabelAtom label = new LabelAtom("agent-windows");
-        DumbSlave agent = jenkins.createOnlineSlave(label);
+        DumbSlave agent = r.createOnlineSlave(label);
         agent.setMode(Node.Mode.NORMAL);
         agent.setLabelString("agent-windows");
 
-        TestToolInstaller inst = new TestToolInstaller(jenkins.jenkins.getSelfLabel().getName(), "echo Hello", "myGit/git");
+        TestToolInstaller inst = new TestToolInstaller(r.jenkins.getSelfLabel().getName(), "echo Hello", "myGit/git");
         GitTool toolOnController = new GitTool("myGit", "default/git", Collections.singletonList(
                 new InstallSourceProperty(Collections.singletonList(inst))));
 
@@ -188,15 +188,15 @@ public class GitToolChooserTest {
 
         GitTool JTool = new JGitTool(Collections.emptyList());
 
-        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(toolOnController, toolOnAgent, JTool);
+        r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(toolOnController, toolOnAgent, JTool);
         agent.getNodeProperties().add(new ToolLocationNodeProperty(new ToolLocationNodeProperty.ToolLocation(
-                jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class), toolOnController.getName(), toolOnController.getHome())));
+                r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class), toolOnController.getName(), toolOnController.getHome())));
 
         agent.getNodeProperties().add(new ToolLocationNodeProperty(new ToolLocationNodeProperty.ToolLocation(
-                jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class), toolOnAgent.getName(), toolOnAgent.getHome())));
+                r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class), toolOnAgent.getName(), toolOnAgent.getHome())));
 
         agent.getNodeProperties().add(new ToolLocationNodeProperty(new ToolLocationNodeProperty.ToolLocation(
-                jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class), JTool.getName(), null)));
+                r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class), JTool.getName(), null)));
 
         GitToolChooser r = new GitToolChooser(remote, context, credentialsId, JTool, agent, TaskListener.NULL,true);
 
@@ -218,7 +218,7 @@ public class GitToolChooserTest {
 
         buildAProject(sampleRepo, false);
 
-        List<TopLevelItem> list = jenkins.jenkins.getItems();
+        List<TopLevelItem> list = r.jenkins.getItems();
 
         //Since no installation is provided, the gitExe will be git
         GitTool rTool = new GitTool("my-git", isWindows() ? "git.exe" : "git", Collections.emptyList());
@@ -262,14 +262,14 @@ public class GitToolChooserTest {
         GitTool tool = new JGitTool(Collections.emptyList());
 
         // Add a JGit tool to the Jenkins instance to let the estimator find and recommend "jgit"
-        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool);
+        r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool);
 
         store.addCredentials(Domain.global(), createCredential(CredentialsScope.GLOBAL, "github"));
         store.save();
 
         buildAProject(sampleRepo, false);
 
-        List<TopLevelItem> list = jenkins.jenkins.getItems();
+        List<TopLevelItem> list = r.jenkins.getItems();
 
         GitToolChooser repoSizeEstimator = new GitToolChooser(source.getRemote(), list.get(0), "github", tool, null,TaskListener.NULL,true);
         /*
@@ -378,7 +378,7 @@ public class GitToolChooserTest {
         store.save();
         buildAProject(sampleRepo, false);
 
-        List<TopLevelItem> list = jenkins.jenkins.getItems();
+        List<TopLevelItem> list = r.jenkins.getItems();
 
         // Assuming no tool is installed and git is present in the machine
         GitTool tool = new GitTool("my-git", isWindows() ? "git.exe" : "git", Collections.emptyList());
@@ -402,11 +402,11 @@ public class GitToolChooserTest {
 
         // With JGit, we don't ask the name and home of the tool
         GitTool tool = new JGitTool(Collections.emptyList());
-        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool);
+        r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool);
 
 
         buildAProject(sampleRepo, false);
-        List<TopLevelItem> list = jenkins.jenkins.getItems();
+        List<TopLevelItem> list = r.jenkins.getItems();
 
         GitToolChooser sizeEstimator = new GitToolChooser(remote, list.get(0), "github", tool, null, TaskListener.NULL,true);
         assertThat(sizeEstimator.getGitTool(), containsString("jgit"));
@@ -424,7 +424,7 @@ public class GitToolChooserTest {
         store.addCredentials(Domain.global(), createCredential(CredentialsScope.GLOBAL, "github"));
         store.save();
         buildAProject(sampleRepo, false);
-        List<TopLevelItem> list = jenkins.jenkins.getItems();
+        List<TopLevelItem> list = r.jenkins.getItems();
 
         // Assuming no tool is installed by user and git is present in the machine
         GitTool tool = new GitTool("my-git", isWindows() ? "git.exe" : "git", Collections.emptyList());
@@ -446,7 +446,7 @@ public class GitToolChooserTest {
         store.addCredentials(Domain.global(), createCredential(CredentialsScope.GLOBAL, "github"));
         store.save();
         buildAProject(sampleRepo, false);
-        List<TopLevelItem> list = jenkins.jenkins.getItems();
+        List<TopLevelItem> list = r.jenkins.getItems();
 
         // Assuming no tool is installed by user and git is present in the machine
         GitTool tool = new GitTool("my-git", isWindows() ? "git.exe" : "git", Collections.emptyList());
@@ -466,7 +466,7 @@ public class GitToolChooserTest {
         sampleRepo.init();
 
         buildAProject(sampleRepo, true);
-        List<TopLevelItem> list = jenkins.jenkins.getItems();
+        List<TopLevelItem> list = r.jenkins.getItems();
 
         // Assuming no tool is installed by user and git is present in the machine
         GitTool tool = new GitTool("my-git", isWindows() ? "git.exe" : "git", Collections.emptyList());
@@ -489,7 +489,7 @@ public class GitToolChooserTest {
 
         // With JGit, we don't ask the name and home of the tool
         GitTool tool = new GitTool("my-git", isWindows() ? "git.exe" : "git", Collections.emptyList());
-        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool);
+        r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool);
 
         GitToolChooser gitToolChooser = new GitToolChooser(remote, context, credentialsId, tool, null, TaskListener.NULL,true);
 
@@ -509,7 +509,7 @@ public class GitToolChooserTest {
         // With JGit, we don't ask the name and home of the tool
         GitTool tool = new GitTool("my-git", isWindows() ? "git.exe" : "git", Collections.emptyList());
         GitTool jgitTool = new JGitTool(Collections.emptyList());
-        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool, jgitTool);
+        r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool, jgitTool);
 
         GitToolChooser gitToolChooser = new GitToolChooser(remote, context, credentialsId, tool, null, TaskListener.NULL,true);
         assertThat(gitToolChooser.getGitTool(), is("jgit"));
@@ -529,7 +529,7 @@ public class GitToolChooserTest {
         GitTool tool = new GitTool("my-git", "/usr/bin/git", Collections.emptyList());
         GitTool jgitTool = new JGitTool(Collections.emptyList());
         GitTool jGitApacheTool = new JGitApacheTool(Collections.emptyList());
-        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool, jgitTool, jGitApacheTool);
+        r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool, jgitTool, jGitApacheTool);
 
         GitToolChooser gitToolChooser = new GitToolChooser(remote, context, credentialsId, tool, null, TaskListener.NULL,true);
         assertThat(gitToolChooser.getGitTool(), is("jgit"));
@@ -549,7 +549,7 @@ public class GitToolChooserTest {
         // With JGit, we don't ask the name and home of the tool
         GitTool tool = new GitTool("my-git", "/usr/bin/git", Collections.emptyList());
         GitTool jGitApacheTool = new JGitApacheTool(Collections.emptyList());
-        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool, jGitApacheTool);
+        r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool, jGitApacheTool);
 
         GitToolChooser gitToolChooser = new GitToolChooser(remote, context, credentialsId, jGitApacheTool, null, TaskListener.NULL,true);
         assertThat(gitToolChooser.getGitTool(), is("jgitapache"));
@@ -567,7 +567,7 @@ public class GitToolChooserTest {
 
         // With JGit, we don't ask the name and home of the tool
         GitTool jGitApacheTool = new JGitApacheTool(Collections.emptyList());
-        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(jGitApacheTool);
+        r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(jGitApacheTool);
 
         GitToolChooser gitToolChooser = new GitToolChooser(remote, context, credentialsId, jGitApacheTool, null, TaskListener.NULL,true);
         assertThat(gitToolChooser.getGitTool(), is("jgitapache"));
@@ -586,7 +586,7 @@ public class GitToolChooserTest {
         store.save();
         buildAProject(sampleRepo, false);
 
-        List<TopLevelItem> list = jenkins.jenkins.getItems();
+        List<TopLevelItem> list = r.jenkins.getItems();
 
         // Assuming no tool is installed and git is present in the machine
         GitTool tool = new GitTool("my-git", isWindows() ? "git.exe" : "git", Collections.emptyList());
@@ -605,11 +605,11 @@ public class GitToolChooserTest {
 
         // With JGit, we don't ask the name and home of the tool
         GitTool jGitTool = new JGitTool(Collections.emptyList());
-        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(jGitTool);
+        r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(jGitTool);
 
         buildAProject(sampleRepo, false);
 
-        List<TopLevelItem> list = jenkins.jenkins.getItems();
+        List<TopLevelItem> list = r.jenkins.getItems();
 
         // Assuming no tool is installed and git is present in the machine
         String gitExe = jGitTool.getGitExe();
@@ -628,11 +628,11 @@ public class GitToolChooserTest {
 
         // With JGit, we don't ask the name and home of the tool
         GitTool tool = new GitTool("my-git", isWindows() ? "git.exe" : "git", Collections.emptyList());
-        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool);
+        r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool);
 
         buildAProject(sampleRepo, false);
 
-        List<TopLevelItem> list = jenkins.jenkins.getItems();
+        List<TopLevelItem> list = r.jenkins.getItems();
 
         // Assuming no tool is installed and git is present in the machine
         String gitExe = tool.getGitExe();
@@ -653,11 +653,11 @@ public class GitToolChooserTest {
         GitTool tool = new GitTool("my-git", isWindows() ? "git.exe" : "git", Collections.emptyList());
         GitTool jgitTool = new JGitTool(Collections.emptyList());
         GitTool jGitApacheTool = new JGitApacheTool(Collections.emptyList());
-        jenkins.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool, jgitTool, jGitApacheTool);
+        r.jenkins.getDescriptorByType(GitTool.DescriptorImpl.class).setInstallations(tool, jgitTool, jGitApacheTool);
 
         buildAProject(sampleRepo, false);
 
-        List<TopLevelItem> list = jenkins.jenkins.getItems();
+        List<TopLevelItem> list = r.jenkins.getItems();
 
         // Assuming no tool is installed and git is present in the machine
         String gitExe = tool.getGitExe();
@@ -673,7 +673,7 @@ public class GitToolChooserTest {
         // Generate a unique repository name and compute expected cache directory
         String remoteName = "https://github.com/jenkinsci/git-plugin-" + java.util.UUID.randomUUID() + ".git";
         String cacheEntry = AbstractGitSCMSource.getCacheEntry(remoteName);
-        File expectedCacheDir = new File(new File(jenkins.jenkins.getRootDir(), "caches"), cacheEntry);
+        File expectedCacheDir = new File(new File(r.jenkins.getRootDir(), "caches"), cacheEntry);
 
         // Directory should not exist
         assertThat(expectedCacheDir, is(not(anExistingFileOrDirectory())));
@@ -698,7 +698,7 @@ public class GitToolChooserTest {
 
         failAProject(sampleRepo);
 
-        List<TopLevelItem> list = jenkins.jenkins.getItems();
+        List<TopLevelItem> list = r.jenkins.getItems();
 
         // Use JGit as the git tool for this NPE check
         GitTool jgitTool = new JGitTool(Collections.emptyList());
@@ -786,7 +786,7 @@ public class GitToolChooserTest {
 
 
     private void buildAProject(GitSampleRepoRule sampleRepo, boolean noCredentials) throws Exception {
-        WorkflowJob p = jenkins.jenkins.createProject(WorkflowJob.class, "p");
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
                 "node {\n"
                         + "  checkout(\n"
@@ -797,23 +797,23 @@ public class GitToolChooserTest {
                         + "  def tokenBranch = tm '${GIT_BRANCH,fullName=false}'\n"
                         + "  echo \"token macro expanded branch is ${tokenBranch}\"\n"
                         + "}", true));
-        WorkflowRun b = jenkins.buildAndAssertSuccess(p);
+        WorkflowRun b = r.buildAndAssertSuccess(p);
         if (!noCredentials) {
-            jenkins.waitForMessage("using credential github", b);
+            r.waitForMessage("using credential github", b);
         }
-        jenkins.waitForMessage("token macro expanded branch is " + sampleRepo.getDefaultBranchName(), b);
+        r.waitForMessage("token macro expanded branch is " + sampleRepo.getDefaultBranchName(), b); // Unexpected but current behavior
     }
 
     /* Attempt to perform a checkout without defining a remote repository. Expected to fail, but should not report NPE */
     private void failAProject(GitSampleRepoRule sampleRepo) throws Exception {
-        WorkflowJob p = jenkins.jenkins.createProject(WorkflowJob.class, "intentionally-failing-job-without-remote-config");
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "intentionally-failing-job-without-remote-config");
         p.setDefinition(new CpsFlowDefinition("node {\n"
                                               + "  checkout(\n"
                                               + "    [$class: 'GitSCM']\n"
                                               + "  )\n"
                                               + "}", true));
-        WorkflowRun b = jenkins.buildAndAssertStatus(hudson.model.Result.FAILURE, p);
-        jenkins.waitForMessage("Couldn't find any revision to build", b);
+        WorkflowRun b = r.buildAndAssertStatus(hudson.model.Result.FAILURE, p);
+        r.waitForMessage("Couldn't find any revision to build", b);
     }
 
     private StandardCredentials createCredential(CredentialsScope scope, String id) {
