@@ -313,7 +313,7 @@ public class GitPublisherTest extends AbstractGitProject {
 
         // create a new branch and build, this results in a fast-forward merge
         testGitClient.checkout(defaultBranchName);
-        ObjectId master = testGitClient.revParse("HEAD");
+        ObjectId head = testGitClient.revParse("HEAD");
         testGitClient.branch("branch1");
         testGitClient.checkout("branch1");
         final String commitFile1 = "commitFile1";
@@ -335,9 +335,9 @@ public class GitPublisherTest extends AbstractGitProject {
         // integration should have master as the parent commit
         List<ObjectId> revList = testGitClient.revList("integration^1");
         ObjectId integrationParent = revList.get(0);
-        assertEquals("Fast-forward merge should have had master as a parent",master,integrationParent);
+        assertEquals("Fast-forward merge should have had original head as a parent",head,integrationParent);
 
-        // create a second branch off of master, so as to force a merge commit and to test
+        // create a second branch off of primary branch, so as to force a merge commit and to test
         // that --ff gracefully falls back to a merge commit
         testGitClient.checkout(defaultBranchName);
         testGitClient.branch("branch2");
@@ -398,7 +398,7 @@ public class GitPublisherTest extends AbstractGitProject {
         // create a new branch and build
         // This would be a fast-forward merge, but we're calling for --no-ff and that should work
         testGitClient.checkout(defaultBranchName);
-        ObjectId master = testGitClient.revParse("HEAD");
+        ObjectId head = testGitClient.revParse("HEAD");
         testGitClient.branch("branch1");
         testGitClient.checkout("branch1");
         final String commitFile1 = "commitFile1";
@@ -409,7 +409,7 @@ public class GitPublisherTest extends AbstractGitProject {
 
         // Test that the build and publish performed as expected.
         //   - commitFile1 is in the workspace
-        //   - integration has branch1 and master as parents, like so:
+        //   - integration has branch1 and primary branch as parents, like so:
         //     *   6913e57 (integration) Merge commit '257e33c...' into integration
         //     |\
         //     | * 257e33c (HEAD, branch1) Commit number 1
@@ -418,11 +418,11 @@ public class GitPublisherTest extends AbstractGitProject {
         //
         assertTrue(build2.getWorkspace().child("commitFile1").exists());
         List<ObjectId> revList = testGitClient.revList("integration^1");
-        assertEquals("Integration should have master as a parent",revList.get(0),master);
+        assertEquals("Integration should have tip of primary branch as a parent",revList.get(0),head);
         revList = testGitClient.revList("integration^2");
         assertEquals("Integration should have branch1 as a parent",revList.get(0).name(),shaBranch1);
 
-        // create a second branch off of master, so as to test that --no-ff is published as expected
+        // create a second branch off of primary branch, so as to test that --no-ff is published as expected
         testGitClient.checkout(defaultBranchName);
         testGitClient.branch("branch2");
         testGitClient.checkout("branch2");
@@ -486,7 +486,7 @@ public class GitPublisherTest extends AbstractGitProject {
         // create a new branch and build
         // This merge can work with --ff-only
         testGitClient.checkout(defaultBranchName);
-        ObjectId master = testGitClient.revParse("HEAD");
+        ObjectId head = testGitClient.revParse("HEAD");
         testGitClient.branch("branch1");
         testGitClient.checkout("branch1");
         final String commitFile1 = "commitFile1";
@@ -506,12 +506,12 @@ public class GitPublisherTest extends AbstractGitProject {
         String shaHead = testGitClient.revParse(Constants.HEAD).name();
         assertEquals("integration and branch1 should line up",shaIntegration, shaBranch1);
         assertEquals("integration and head should line up",shaIntegration, shaHead);
-        // integration should have master as the parent commit
+        // integration should have tip of primary branch as the parent commit
         List<ObjectId> revList = testGitClient.revList("integration^1");
         ObjectId integrationParent = revList.get(0);
-        assertEquals("Fast-forward merge should have had master as a parent",master,integrationParent);
+        assertEquals("Fast-forward merge should have had tip of primary branch as a parent",head,integrationParent);
 
-        // create a second branch off of master, so as to force a merge commit
+        // create a second branch off of primary branch, so as to force a merge commit
         // but the publish will fail as --ff-only cannot work with a parallel branch
         testGitClient.checkout(defaultBranchName);
         testGitClient.branch("branch2");
@@ -531,7 +531,7 @@ public class GitPublisherTest extends AbstractGitProject {
         assertFalse("commitFile1 should not exist in the workspace",build2.getWorkspace().child("commitFile1").exists());
         assertTrue("commitFile2 should exist in the workspace",build2.getWorkspace().child("commitFile2").exists());
         revList = testGitClient.revList("branch2^1");
-        assertEquals("branch2 should have primary branch as a parent",revList.get(0),master);
+        assertEquals("branch2 should have primary branch as a parent",revList.get(0),head);
         assertThrows("branch2 should have no other parent than primary branch", NullPointerException.class, () -> testGitClient.revList("branch2^2"));
     }
 
