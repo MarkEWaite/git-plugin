@@ -238,11 +238,11 @@ public class AbstractGitProject extends AbstractGitRepository {
 
     protected FreeStyleBuild build(final FreeStyleProject project, final Result expectedResult, final String... expectedNewlyCommittedFiles) throws Exception {
         final FreeStyleBuild build = project.scheduleBuild2(0).get();
-        if (expectedResult != null) {
-            r.assertBuildStatus(expectedResult, build);
-        }
         for (final String expectedNewlyCommittedFile : expectedNewlyCommittedFiles) {
             assertTrue(expectedNewlyCommittedFile + " file not found in workspace", build.getWorkspace().child(expectedNewlyCommittedFile).exists());
+        }
+        if (expectedResult != null) {
+            r.assertBuildStatus(expectedResult, build);
         }
         return build;
     }
