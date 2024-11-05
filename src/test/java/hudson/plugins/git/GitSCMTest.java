@@ -13,7 +13,25 @@ import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.Functions;
 import hudson.Launcher;
-import hudson.model.*;
+import hudson.model.AbstractBuild;
+import hudson.model.Action;
+import hudson.model.Cause;
+import hudson.model.Descriptor;
+import hudson.model.Descriptor.FormException;
+import hudson.model.EnvironmentContributingAction;
+import hudson.model.EnvironmentContributor;
+import hudson.model.Fingerprint;
+import hudson.model.FreeStyleBuild;
+import hudson.model.FreeStyleProject;
+import hudson.model.ParameterValue;
+import hudson.model.ParametersAction;
+import hudson.model.ParametersDefinitionProperty;
+import hudson.model.Result;
+import hudson.model.Run;
+import hudson.model.StringParameterDefinition;
+import hudson.model.StringParameterValue;
+import hudson.model.TaskListener;
+import hudson.model.User;
 import hudson.plugins.git.GitSCM.DescriptorImpl;
 import hudson.plugins.git.browser.GithubWeb;
 import hudson.plugins.git.extensions.GitSCMExtension;
@@ -168,9 +186,9 @@ public class GitSCMTest extends AbstractGitTestCase {
         }
     }
 
-    private StandardCredentials getInvalidCredential() {
+    private StandardCredentials getInvalidCredential() throws FormException {
         String username = "bad-user";
-        String password = "bad-password";
+        String password = "bad-password-but-long-enough";
         CredentialsScope scope = CredentialsScope.GLOBAL;
         String id = "username-" + username + "-password-" + password;
         return new UsernamePasswordCredentialsImpl(scope, id, "desc: " + id, username, password);
@@ -2186,28 +2204,30 @@ public class GitSCMTest extends AbstractGitTestCase {
 
         WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "pipeline-checkout-3-tags");
         p.setDefinition(new CpsFlowDefinition(
-            "node {\n" +
-            "    def tokenBranch = ''\n" +
-            "    def tokenRevision = ''\n" +
-            "    def checkout1 = checkout([$class: 'GitSCM', branches: [[name: 'git-1.1']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/jenkinsci/git-plugin.git']]])\n" +
-            "    echo \"checkout1: ${checkout1}\"\n" +
-            "    tokenBranch = tm '${GIT_BRANCH}'\n" +
-            "    tokenRevision = tm '${GIT_REVISION}'\n" +
-            "    echo \"token1: ${tokenBranch}\"\n" +
-            "    echo \"revision1: ${tokenRevision}\"\n" +
-            "    def checkout2 = checkout([$class: 'GitSCM', branches: [[name: 'git-2.0.2']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/jenkinsci/git-plugin.git']]])\n" +
-            "    echo \"checkout2: ${checkout2}\"\n" +
-            "    tokenBranch = tm '${GIT_BRANCH,all=true}'\n" +
-            "    tokenRevision = tm '${GIT_REVISION,length=8}'\n" +
-            "    echo \"token2: ${tokenBranch}\"\n" +
-            "    echo \"revision2: ${tokenRevision}\"\n" +
-            "    def checkout3 = checkout([$class: 'GitSCM', branches: [[name: 'git-3.0.0']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/jenkinsci/git-plugin.git']]])\n" +
-            "    echo \"checkout3: ${checkout3}\"\n" +
-            "    tokenBranch = tm '${GIT_BRANCH,fullName=true}'\n" +
-            "    tokenRevision = tm '${GIT_REVISION,length=6}'\n" +
-            "    echo \"token3: ${tokenBranch}\"\n" +
-            "    echo \"revision3: ${tokenRevision}\"\n" +
-            "}", true));
+            """
+            node {
+                def tokenBranch = ''
+                def tokenRevision = ''
+                def checkout1 = checkout([$class: 'GitSCM', branches: [[name: 'git-1.1']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/jenkinsci/git-plugin.git']]])
+                echo "checkout1: ${checkout1}"
+                tokenBranch = tm '${GIT_BRANCH}'
+                tokenRevision = tm '${GIT_REVISION}'
+                echo "token1: ${tokenBranch}"
+                echo "revision1: ${tokenRevision}"
+                def checkout2 = checkout([$class: 'GitSCM', branches: [[name: 'git-2.0.2']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/jenkinsci/git-plugin.git']]])
+                echo "checkout2: ${checkout2}"
+                tokenBranch = tm '${GIT_BRANCH,all=true}'
+                tokenRevision = tm '${GIT_REVISION,length=8}'
+                echo "token2: ${tokenBranch}"
+                echo "revision2: ${tokenRevision}"
+                def checkout3 = checkout([$class: 'GitSCM', branches: [[name: 'git-3.0.0']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/jenkinsci/git-plugin.git']]])
+                echo "checkout3: ${checkout3}"
+                tokenBranch = tm '${GIT_BRANCH,fullName=true}'
+                tokenRevision = tm '${GIT_REVISION,length=6}'
+                echo "token3: ${tokenBranch}"
+                echo "revision3: ${tokenRevision}"
+            }
+            """, true));
         WorkflowRun b = r.buildAndAssertSuccess(p);
         
         String log = b.getLog();
@@ -3018,7 +3038,7 @@ public class GitSCMTest extends AbstractGitTestCase {
         return java.io.File.pathSeparatorChar==';';
     }
 
-    private StandardCredentials createCredential(CredentialsScope scope, String id) {
-        return new UsernamePasswordCredentialsImpl(scope, id, "desc: " + id, "username", "password");
+    private StandardCredentials createCredential(CredentialsScope scope, String id) throws FormException {
+        return new UsernamePasswordCredentialsImpl(scope, id, "desc: " + id, "username", "password-needs-to-be-14");
     }
 }

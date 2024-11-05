@@ -5,13 +5,14 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>4.86</version>
+    <version>5.2</version>
     <relativePath />
   </parent>
 
   <artifactId>git</artifactId>
   <version>${revision}${changelist}</version>
   <packaging>hpi</packaging>
+
   <name>Git plugin</name>
   <url>https://github.com/${gitHubRepo}</url>
   <inceptionYear>2007</inceptionYear>
@@ -42,14 +43,6 @@
       <url>http://rsandell.com</url>
     </developer>
     <developer>
-      <id>mramonleon</id>
-      <name>M Ramon Leon</name>
-      <email>rleon@cloudbees.com</email>
-      <roles>
-        <role>developer</role>
-      </roles>
-    </developer>
-    <developer>
       <id>olamy</id>
       <name>Olivier Lamy</name>
       <email>olamy@apache.org</email>
@@ -69,11 +62,12 @@
   </scm>
 
   <properties>
-    <revision>5.4.1</revision>
+    <revision>5.6.1</revision>
     <changelist>-SNAPSHOT</changelist>
     <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
-    <jenkins.baseline>2.440</jenkins.baseline>
-    <jenkins.version>${jenkins.baseline}.3</jenkins.version>
+    <!-- https://www.jenkins.io/doc/developer/plugin-development/choosing-jenkins-baseline/ -->
+    <jenkins.baseline>2.479</jenkins.baseline>
+    <jenkins.version>${jenkins.baseline}.1</jenkins.version>
     <no-test-jar>false</no-test-jar>
     <!-- Jenkins.MANAGE is still in Beta -->
     <useBeta>true</useBeta>
@@ -89,7 +83,7 @@
       <dependency>
         <groupId>io.jenkins.tools.bom</groupId>
         <artifactId>bom-${jenkins.baseline}.x</artifactId>
-        <version>3289.v3ff9637cd241</version>
+        <version>3613.v584fca_12cf5c</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -165,7 +159,7 @@
     <dependency>
       <groupId>nl.jqno.equalsverifier</groupId>
       <artifactId>equalsverifier</artifactId>
-      <version>3.16.2</version>
+      <version>3.17.1</version>
       <scope>test</scope>
     </dependency>
     <!--Credential Binding Plugin-->
@@ -187,7 +181,6 @@
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>promoted-builds</artifactId>
-      <version>892.vd6219fc0a_efb</version>
       <optional>true</optional>
     </dependency>
     <dependency>
@@ -244,13 +237,13 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
-      <version>1.20.1</version>
+      <version>1.20.3</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>io.github.sparsick.testcontainers.gitserver</groupId>
       <artifactId>testcontainers-gitserver</artifactId>
-      <version>0.8.0</version>
+      <version>0.10.0</version>
       <scope>test</scope>
       <exclusions>
         <exclusion>
@@ -296,7 +289,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
-        <version>3.5.0</version>
+        <version>3.6.0</version>
         <configuration>
           <configLocation>google_checks.xml</configLocation>
           <failOnViolation>true</failOnViolation>
