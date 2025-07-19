@@ -51,7 +51,9 @@ import org.jvnet.hudson.test.CaptureEnvironmentBuilder;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.TestExtension;
 
-import static org.junit.Assert.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItems;
+import static org.junit.Assert.assertTrue;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 /**
@@ -246,7 +248,7 @@ public abstract class AbstractGitTestCase {
     protected FreeStyleBuild build(final FreeStyleProject project, final Result expectedResult, final String...expectedNewlyCommittedFiles) throws Exception {
         final FreeStyleBuild build = project.scheduleBuild2(0).get();
         for(final String expectedNewlyCommittedFile : expectedNewlyCommittedFiles) {
-            assertTrue(expectedNewlyCommittedFile + " file not found in workspace", build.getWorkspace().child(expectedNewlyCommittedFile).exists());
+            assertThat(build.getWorkspace().list(), hasItems(build.getWorkspace().child(expectedNewlyCommittedFile)));
         }
         if(expectedResult != null) {
             r.assertBuildStatus(expectedResult, build);
