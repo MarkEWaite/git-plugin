@@ -248,7 +248,7 @@ public abstract class AbstractGitTestCase {
     protected FreeStyleBuild build(final FreeStyleProject project, final Result expectedResult, final String...expectedNewlyCommittedFiles) throws Exception {
         final FreeStyleBuild build = project.scheduleBuild2(0).get();
         for(final String expectedNewlyCommittedFile : expectedNewlyCommittedFiles) {
-            assertThat(build.getWorkspace().list(), hasItems(build.getWorkspace().child(expectedNewlyCommittedFile)));
+            assertThat("In repo: " + sampleRepo.getRoot(), build.getWorkspace().list(), hasItems(build.getWorkspace().child(expectedNewlyCommittedFile)));
         }
         if(expectedResult != null) {
             r.assertBuildStatus(expectedResult, build);
