@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label 'cb-pc'
+        label 'mark-pc3-ssh'
     }
 
     stages {
