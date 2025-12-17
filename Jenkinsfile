@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label 'special'
+        label 'cb-pc'
     }
 
     stages {
