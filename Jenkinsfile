@@ -2,11 +2,15 @@ pipeline {
     agent {
         label 'windows'
     }
-
+    options {
+        skipDefaultCheckout true
+    }
     stages {
-        stage('Hello') {
+        stage('Checkout') {
             steps {
-                echo 'Hello World'
+                ws('percent%2Fencoded') {
+                    checkout scm
+                }
             }
         }
     }
