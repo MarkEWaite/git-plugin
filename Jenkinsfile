@@ -1,11 +1,13 @@
-/*
- See the documentation for more options:
- https://github.com/jenkins-infra/pipeline-library/
-*/
-buildPlugin(
-  forkCount: '1C', // Run a JVM per core in tests
-  // we use Docker for containerized tests
-  useContainerAgent: false,
-  configurations: [
-    [platform: 'windows', jdk: 17],
-])
+pipeline {
+    agent {
+        label 'alpine'
+    }
+
+    stages {
+        stage('Hello') {
+            steps {
+                echo 'Hello World'
+            }
+        }
+    }
+}
