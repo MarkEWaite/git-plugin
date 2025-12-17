@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label 'mark-pc3-ssh'
+        label 'windows'
     }
 
     stages {
