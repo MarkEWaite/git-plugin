@@ -7,5 +7,5 @@ buildPlugin(
   // we use Docker for containerized tests
   useContainerAgent: false,
   configurations: [
-    [platform: 'linux', jdk: 17],
+    [platform: 'windows', jdk: 17],
 ])
