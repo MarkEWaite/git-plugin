@@ -25,7 +25,6 @@
 
 package jenkins.plugins.git;
 
-import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardCredentials;
 import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
@@ -66,7 +65,7 @@ import jenkins.scm.api.SCMHead;
 import jenkins.scm.api.SCMRevision;
 import jenkins.scm.api.SCMSource;
 import jenkins.scm.api.SCMSourceDescriptor;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
@@ -369,20 +368,17 @@ public class GitSCMFileSystem extends SCMFileSystem {
                 GitClient client = git.getClient();
                 String credentialsId = config.getCredentialsId();
                 if (credentialsId != null) {
-                    StandardCredentials credential = CredentialsMatchers.firstOrNull(
-                            CredentialsProvider.lookupCredentialsInItem(
-                                StandardUsernameCredentials.class,
-                                owner,
-                                ACL.SYSTEM2,
-                                URIRequirementBuilder.fromUri(remote).build()
-                            ),
-                            CredentialsMatchers.allOf(
-                                CredentialsMatchers.withId(credentialsId),
-                                GitClient.CREDENTIALS_MATCHER
-                            )
-                        );
-                    client.addDefaultCredentials(credential);
-                    CredentialsProvider.track(owner, credential);
+                    var credential = CredentialsProvider.findCredentialByIdInItem(
+                            credentialsId,
+                            StandardUsernameCredentials.class,
+                            owner,
+                            ACL.SYSTEM2,
+                            URIRequirementBuilder.fromUri(remote).build());
+                    StandardCredentials matchedCredential = credential != null && GitClient.CREDENTIALS_MATCHER.matches(credential)
+                            ? credential
+                            : null;
+                    client.addDefaultCredentials(matchedCredential);
+                    CredentialsProvider.track(owner, matchedCredential);
                 }
 
                 if (!client.hasGitRepo(false)) {

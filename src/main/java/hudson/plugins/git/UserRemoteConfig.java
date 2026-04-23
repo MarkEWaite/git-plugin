@@ -1,6 +1,5 @@
 package hudson.plugins.git;
 
-import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardCredentials;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
@@ -23,7 +22,7 @@ import hudson.util.ListBoxModel;
 import jenkins.model.Jenkins;
 import jenkins.plugins.git.GitSCMSource;
 import jenkins.security.FIPS140;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.transport.RemoteConfig;
 import org.jenkinsci.plugins.gitclient.Git;
@@ -268,10 +267,12 @@ public class UserRemoteConfig extends AbstractDescribableImpl<UserRemoteConfig> 
         }
 
         private static StandardCredentials lookupCredentials(@CheckForNull Item project, String credentialId, String uri) {
-            return (credentialId == null) ? null : CredentialsMatchers.firstOrNull(
-                        CredentialsProvider.lookupCredentialsInItem(StandardCredentials.class, project, ACL.SYSTEM2,
-                                GitURIRequirementsBuilder.fromUri(uri).build()),
-                        CredentialsMatchers.withId(credentialId));
+            return (credentialId == null) ? null : CredentialsProvider.findCredentialByIdInItem(
+                    credentialId,
+                    StandardCredentials.class,
+                    project,
+                    ACL.SYSTEM2,
+                    GitURIRequirementsBuilder.fromUri(uri).build());
         }
 
         @Override
