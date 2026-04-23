@@ -23,7 +23,6 @@
  */
 package jenkins.plugins.git;
 
-import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsNameProvider;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardCredentials;
@@ -104,7 +103,7 @@ import jenkins.scm.impl.trait.WildcardSCMSourceFilterTrait;
 import jenkins.security.FIPS140;
 import jenkins.util.SystemProperties;
 import net.jcip.annotations.GuardedBy;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.FileMode;
 import org.eclipse.jgit.lib.ObjectId;
@@ -400,6 +399,9 @@ public abstract class AbstractGitSCMSource extends SCMSource {
             client.setRemoteUrl(remoteName, getRemote());
             listener.getLogger().println((prune ? "Fetching & pruning " : "Fetching ") + remoteName + "...");
             FetchCommand fetch = client.fetch_();
+            if (!GitSCMSource.IGNORE_TAG_DISCOVERY_TRAIT) {
+                fetch.tags(context.wantTags());
+            }
             fetch = fetch.prune(prune);
 
             URIish remoteURI = null;
@@ -1327,12 +1329,13 @@ public abstract class AbstractGitSCMSource extends SCMSource {
         if (credentialsId == null) {
             return null;
         }
-        return CredentialsMatchers
-                .firstOrNull(
-                        CredentialsProvider.lookupCredentialsInItem(StandardUsernameCredentials.class, context,
-                                ACL.SYSTEM2, URIRequirementBuilder.fromUri(getRemote()).build()),
-                        CredentialsMatchers.allOf(CredentialsMatchers.withId(credentialsId),
-                                GitClient.CREDENTIALS_MATCHER));
+        var credential = CredentialsProvider.findCredentialByIdInItem(
+                credentialsId,
+                StandardUsernameCredentials.class,
+                context,
+                ACL.SYSTEM2,
+                URIRequirementBuilder.fromUri(getRemote()).build());
+        return credential != null && GitClient.CREDENTIALS_MATCHER.matches(credential) ? credential : null;
     }
 
     /**
@@ -1552,11 +1555,6 @@ public abstract class AbstractGitSCMSource extends SCMSource {
      *
      * @since 3.6.1
      */
-    @SuppressFBWarnings(value = { "RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE",
-                                  "RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE",
-                                  "NP_LOAD_OF_KNOWN_NULL_VALUE"
-                                },
-                        justification = "Java 11 generated code causes redundant nullcheck")
     private static class TreeWalkingSCMProbe extends SCMProbe {
         private final String name;
         private final long lastModified;
