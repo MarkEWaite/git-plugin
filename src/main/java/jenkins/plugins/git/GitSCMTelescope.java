@@ -25,7 +25,6 @@
 
 package jenkins.plugins.git;
 
-import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardCredentials;
 import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
@@ -71,8 +70,8 @@ public abstract class GitSCMTelescope extends SCMFileSystem.Builder {
     @CheckForNull
     public static GitSCMTelescope of(@NonNull GitSCM source) {
         for (SCMFileSystem.Builder b : ExtensionList.lookup(SCMFileSystem.Builder.class)) {
-            if (b instanceof GitSCMTelescope && b.supports(source)) {
-                return (GitSCMTelescope) b;
+            if (b instanceof GitSCMTelescope telescope && b.supports(source)) {
+                return telescope;
             }
             if (b instanceof GitSCMFileSystem.BuilderImpl) {
                 // telescopes must come before the fallback GitSCMFileSystem.BuilderImpl otherwise they would
@@ -93,8 +92,8 @@ public abstract class GitSCMTelescope extends SCMFileSystem.Builder {
     @CheckForNull
     public static GitSCMTelescope of(@NonNull AbstractGitSCMSource source) {
         for (SCMFileSystem.Builder b : ExtensionList.lookup(SCMFileSystem.Builder.class)) {
-            if (b instanceof GitSCMTelescope && b.supports(source)) {
-                return (GitSCMTelescope) b;
+            if (b instanceof GitSCMTelescope telescope && b.supports(source)) {
+                return telescope;
             }
             if (GitSCMFileSystem.BuilderImpl.class.equals(b.getClass())) {
                 // telescopes must come before the fallback GitSCMFileSystem.BuilderImpl otherwise they would
@@ -132,9 +131,7 @@ public abstract class GitSCMTelescope extends SCMFileSystem.Builder {
      */
     @Override
     public final boolean supports(@NonNull SCM source) {
-        if (source instanceof GitSCM) {
-            // we only support the GitSCM if the branch is completely unambiguous
-            GitSCM git = (GitSCM) source;
+        if (source instanceof GitSCM git) {
             List<UserRemoteConfig> configs = git.getUserRemoteConfigs();
             List<BranchSpec> branches = git.getBranches();
             if (configs.size() == 1) {
@@ -153,8 +150,8 @@ public abstract class GitSCMTelescope extends SCMFileSystem.Builder {
      */
     @Override
     public final boolean supports(@NonNull SCMSource source) {
-        return source instanceof AbstractGitSCMSource && source.getOwner() != null && supports(
-                ((AbstractGitSCMSource) source).getRemote());
+        return source instanceof AbstractGitSCMSource agscms && source.getOwner() != null && supports(
+                agscms.getRemote());
     }
 
     /**
@@ -164,9 +161,8 @@ public abstract class GitSCMTelescope extends SCMFileSystem.Builder {
     public final SCMFileSystem build(@NonNull SCMSource source, @NonNull SCMHead head, @CheckForNull SCMRevision rev)
             throws IOException, InterruptedException {
         SCMSourceOwner owner = source.getOwner();
-        if (source instanceof AbstractGitSCMSource && owner != null && supports(
-                ((AbstractGitSCMSource) source).getRemote())) {
-            AbstractGitSCMSource git = (AbstractGitSCMSource) source;
+        if (source instanceof AbstractGitSCMSource git && owner != null && supports(
+                git.getRemote())) {
             String remote = git.getRemote();
             StandardUsernameCredentials credentials = git.getCredentials();
             validate(remote, credentials);
@@ -181,9 +177,7 @@ public abstract class GitSCMTelescope extends SCMFileSystem.Builder {
     @Override
     public final SCMFileSystem build(@NonNull Item owner, @NonNull SCM scm, SCMRevision rev)
             throws IOException, InterruptedException {
-        if (scm instanceof GitSCM) {
-            // we only support the GitSCM if the branch is completely unambiguous
-            GitSCM git = (GitSCM) scm;
+        if (scm instanceof GitSCM git) {
             List<UserRemoteConfig> configs = git.getUserRemoteConfigs();
             List<BranchSpec> branches = git.getBranches();
             if (configs.size() == 1) {
@@ -194,16 +188,17 @@ public abstract class GitSCMTelescope extends SCMFileSystem.Builder {
                     StandardCredentials credentials;
                     String credentialsId = config.getCredentialsId();
                     if (credentialsId != null) {
-                        List<StandardUsernameCredentials> urlCredentials = CredentialsProvider
-                                .lookupCredentialsInItem(StandardUsernameCredentials.class, owner,
-                                        owner instanceof Queue.Task
-                                                ? Tasks.getAuthenticationOf2((Queue.Task) owner)
-                                                : ACL.SYSTEM2, URIRequirementBuilder.fromUri(remote).build());
-                        credentials = CredentialsMatchers.firstOrNull(
-                                urlCredentials,
-                                CredentialsMatchers
-                                        .allOf(CredentialsMatchers.withId(credentialsId), GitClient.CREDENTIALS_MATCHER)
-                        );
+                        var credential = CredentialsProvider.findCredentialByIdInItem(
+                                credentialsId,
+                                StandardUsernameCredentials.class,
+                                owner,
+                                owner instanceof Queue.Task t
+                                        ? Tasks.getAuthenticationOf2(t)
+                                        : ACL.SYSTEM2,
+                                URIRequirementBuilder.fromUri(remote).build());
+                        credentials = credential != null && GitClient.CREDENTIALS_MATCHER.matches(credential)
+                                ? credential
+                                : null;
                     } else {
                         credentials = null;
                     }
